@@ -1,26 +1,15 @@
 # Timelog
 
-* PROJECT NAME
-* YOUR NAME
-* STUDENT_ID
-* SUPERVISOR NAME
-
-## Guidance
-
-* This file contains the time log for your project. It will be submitted along with your final dissertation.
-* **YOU MUST KEEP THIS UP TO DATE AND UNDER VERSION CONTROL.**
-* This timelog should be filled out honestly, regularly (daily) and accurately. It is for *your* benefit.
-* Follow the structure provided, grouping time by weeks.  Quantise time to the half hour.
+* Evaluating the Effectiveness of QUIC When Integrated Into Gstreamer
+* Matthew Walker
+* 2310528
+* DR. Colin Perkins
 
 ## Week 1
 
-### 19 Oct 2019
+### 30 Sep 2021
 
-* *4 hours* Read the project guidance notes
-* *0.5 hour* Created GitLab repository and cloned the cookiecutter for the projects
-* *1 hour* Modified dissertation template, compiled  
+* *1 hour* Read the project guidance notes
+* *0.5 hours* Set up Source Control repository on GitHub and added template project structure
+* *1 hour* Added project specifics to project template files
 
-## 20 Oct 2019
-
-* *1 hour* meeting with supervisor
-* *2 hours* writing initial version of test harness
