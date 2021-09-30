@@ -3,7 +3,7 @@
 * Evaluating the Effectiveness of QUIC When Integrated Into Gstreamer
 * Matthew Walker
 * 2310528
-* DR. Colin Perkins
+* DR Colin Perkins
 
 ## Week 1
 
@@ -13,4 +13,6 @@
 * *0.5 hours* Set up Source Control repository on GitHub and added template project structure
 * *1 hour* Added project specifics to project template files
 * *1.5 hours* Researched quic implementations
+* *2.25 hours* Researched GStreamer + setup vm to work on GStreamer
+* *0.5 hours* Meeting with Supervisor
 

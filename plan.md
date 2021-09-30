@@ -16,8 +16,8 @@ Week-by-week plan for the whole project. Update this as you go along.
   - Confirm elements can be built
 
 * **Week 2**
-  - Select QUIC implementation
-  - Begin work on adding basic GStreamer functionality to elements
+  - Create QUIC implementation interop matrix using candidate impls
+  - Outline requirements for the project
 
 
 * **Week 3**
