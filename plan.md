@@ -1,16 +1,25 @@
 # Plan
 
-* PROJECT TITLE
-* YOUR NAME
-* STUDENT ID
-* SUPERVISOR NAME
+* Evaluating the Effectiveness of QUIC When Integrated Into Gstreamer
+* Matthew Walker
+* 2310528
+* DR. Colin Perkins
 
 Week-by-week plan for the whole project. Update this as you go along.
 
 ## Winter semester
 
 * **Week 1**
+  - Set up source control
+  - Add project template file to source control
+  - Create GStreamer element templates for quicsrc and quicsink
+  - Confirm elements can be built
+
 * **Week 2**
+  - Select QUIC implementation
+  - Begin work on adding basic GStreamer functionality to elements
+
+
 * **Week 3**
 * **Week 4**
 * **Week 5**
