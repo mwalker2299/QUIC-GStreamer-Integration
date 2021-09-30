@@ -45,8 +45,8 @@ lsquic:
 
 * Year placement was discussed briefly.
 * Discussed issues getting GStreamer to work on MacOS as well as solution of Linux VM
-* Discussed options for quic implementation (lsquic, ngtcp2, msquic and quiche are currently being considered. Supervisor suggested looking into Quant aswell
-* Decided that a good way to identify the projects quic implementation was to create an interop matrix using each considered implementations. This should also aid to improve the students understanding of QUIC in general.
+* Discussed options for quic implementation (lsquic, ngtcp2, msquic and quiche are currently being considered). Supervisor suggested looking into Quant aswell
+* Decided that a good way to identify the projects quic implementation was to create an interop matrix using each considered implementation. This should also aid to improve the students understanding of QUIC in general.
 * Supervisor mentioned that he would be unable to provide assistance with GStreamer but could provide resources to help with Mininet.
 * Agreed that the next best step was to come up with specific requirements and plan for carrying out the project. 
 
