@@ -141,7 +141,7 @@ tshark (WireShark's cli) will be used to monitor the transmission of packets thr
     \item Source code for the new QUIC client src GStreamer element.
     \item Source code for the updated tcpclientsrc element.
     \item A manual for installing these elements.
-    \item Descriptions of pipelines utilising these element plugins which can playback or store common GStreamer media types.
+    \item Descriptions of pipelines utilising QUIC, TCP and TLS over TCP element plugins which can playback or store common GStreamer media types.
     \item A simple Python program which can instantiate the pipelines from these descriptions.
     \item Simple server applications which utilise QUIC, TCP and TLS 1.3 over TCP.
     \item Source code for the server applications.
@@ -178,7 +178,7 @@ What follows is a plan detailing when work required for the project will be carr
     \item Select the appropriate base class for GStreamer element plugin.
     \item Create a GStreamer element plugin that inherits from the chosen class.
     \item Add necessary GStreamer properties to store server address and transport parameters.
-    \item Add an include for the QUIC implementation to plugin to ensure it can access the implementation.
+    \item Add an include to the plugin for the QUIC implementation to ensure the plugin can access the implementation.
     \item Ensure created plugin can be built and installed successfully.
 \end{itemize}
 \subsection{Week 5 (Start Date: 25/OCT/2021)}
@@ -204,12 +204,12 @@ What follows is a plan detailing when work required for the project will be carr
 \end{itemize}
 \subsection{Week 9 (Start Date: 22/NOV/2021)}
 \begin{itemize}
-    \item Create Python program instantiate and run each pipelines for each.
+    \item Create Python program to instantiate and run pipelines for each protocol.
     \item Create server applications for each protocol. (These can use existing example servers as a base to save time).
 \end{itemize}
 \subsection{Week 10 (Start Date: 29/NOV/2021)}
 \begin{itemize}
-    \item Test that the pipelines created by the python program can connect to the server applications.
+    \item Test that the pipelines created by the Python program can connect to the server applications.
     \item Fix any issues that arise during testing.
 \end{itemize}
 \subsection{Week 11 (Start Date: 06/DEC/2021)}
@@ -220,7 +220,6 @@ What follows is a plan detailing when work required for the project will be carr
 \subsection{Week 12 (Start Date: 13/DEC/2021)}
 \begin{itemize}
     \item Complete and hand in Status Report.
-    \item (Time may be taken here to study for exams)
 \end{itemize}
 \subsection{Week 13 (Start Date: 03/JAN/2022)}
 \begin{itemize}
@@ -236,8 +235,8 @@ What follows is a plan detailing when work required for the project will be carr
 \end{itemize}
 \subsection{Week 16 (Start Date: 24/JAN/2022)}
 \begin{itemize}
-    \item Analyses results of initial test run, Identify any issues that will require adjustments to framework.
-    \item Fix any issues with planned tests if revealed.
+    \item Analyse results of initial test run and identify any issues that will require adjustments to the test framework.
+    \item Fix any issues with the test framework.
 \end{itemize}
 \subsection{Week 17 (Start Date: 31/JAN/2022)}
 \begin{itemize}
