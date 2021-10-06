@@ -20,6 +20,7 @@ The goal of this project is to evaluate the effectiveness of the QUIC protocol w
 * `src/` The source code for the project.
 * `status_report/` Contains the status report to be submitted in December.
 * `meetings/` Records of the meetings conducted during the project.
+* `requirements/` Holds the requirements for the project
 * `dissertation/` Contains all files needed for the final project dissertation
 * `presentation/` Conatins the final project presentation
 * `summer/` Contains info on the research conducted before the project began
