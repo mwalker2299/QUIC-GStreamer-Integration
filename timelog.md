@@ -44,4 +44,4 @@
 
 ### 6 Oct 2021
 
-* *2.5 hours* Added final touches to requirements/plan document and added deliverables.
+* *3.0 hours* Added final touches to requirements/plan document and added deliverables.
