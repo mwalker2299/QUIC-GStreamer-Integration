@@ -28,4 +28,4 @@
 
 - Experiment further with LSQuic to develop a better understanding of the library.
 - Read documents provided by Colin for inspiration testing strategies and realistic values.
-- Begin work on modifying tcpclientsrc so that it can utilise TLS.
+- Begin work on GStreamer element plugin for QUIC.
