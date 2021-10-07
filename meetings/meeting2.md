@@ -1,4 +1,4 @@
-# Meeting Conducted at 15:30 on 07/10/21
+# Meeting Conducted at 14:30 on 07/10/21
 
 * Evaluating the Effectiveness of QUIC When Integrated Into Gstreamer
 * Matthew Walker
