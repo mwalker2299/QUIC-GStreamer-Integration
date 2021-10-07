@@ -10,23 +10,22 @@
 
 * Performed research further research into QUIC, GStreamer and Mininet to create plan/requirements.
 * Created requirements for project and a plan
-* This differs from the original project outline which had issues related to work load.
 * Project requirements and plan were provided to supervisor.
-
-## Questions
-
-* What did supervisor think of new plan? (rather than create two new elements, create a src element only and upgrade the existing tcpclientsrc element)
-* The new plan differs slightly from the original project summary listed on the project system. Is this an issue?
-* Can we take advantage of QUIC streams when downloading media files from a server.
-* Will the makeup of media files impact data transfer.
-* Can mininet simulate nat rebinding?
-
-* Would interop matrix be too costly time wise.
-
+* Looked into Quant, there is no real documentation of the API or how it works. 
 
 ## Minutes:
 
-
+- Briefly discussed coaching other students
+- Discussed requirements document. Requirements are good but more detail could be provided for testing phase. Colin provided links to documents containing recommended testing strategies and values. 
+- Colin is happy with the plan for the first semester. However, Colin felt that before the second semester time should be taken to reflect on work done so far and determine which additional features or tests can be developed in the time remaining.
+- Colin is happy for the LSQuic implementation to be used, but noted that I should provide justification. 
+- I described my justification for LSQuic (Support for all platforms, compatible with GStreamer, substantial documentation + a tutorial for use, clear and simple api with easy configuration of extensions, regularly updated, supports all quic features and extensions which will be need by the project)
+- Discussed how media type impacts the transfer of data. Audio and video would make a good point of comparison but individual video encodings will not have much impact.
+- Suggestion for additional functionality: Utilise multiple QUIC streams when transferring video files. There are various strategies that could be employed. 
 
 
 ## Plan for next week:
+
+- Experiment further with LSQuic to develop a better understanding of the library.
+- Read documents provided by Colin for inspiration testing strategies and realistic values.
+- Begin work on modifying tcpclientsrc so that it can utilise TLS.
