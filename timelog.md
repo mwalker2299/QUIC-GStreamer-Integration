@@ -45,3 +45,8 @@
 ### 6 Oct 2021
 
 * *3.0 hours* Added final touches to requirements/plan document and added deliverables.
+
+### 7 Oct 2021
+
+* *0.5 hours* meeting with supervisor
+* *1.0 hours* wrote up minutes for meeting and plan for next steps. Also updated project plan. 
