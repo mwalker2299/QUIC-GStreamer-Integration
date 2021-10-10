@@ -49,4 +49,17 @@
 ### 7 Oct 2021
 
 * *0.5 hours* meeting with supervisor
-* *1.0 hours* wrote up minutes for meeting and plan for next steps. Also updated project plan. 
+* *1.0 hours* wrote up minutes for meeting and plan for next steps. Also updated project plan.
+
+### 9 Oct 2021
+
+* *1.0 hours* Updated to ubuntu 20.04 VM to allow GStreamer 1.16 to be utilised
+* *1.5 hours* Created GStreamer QUIC source element from template. Confirmed build and installation worked
+* *1.5 hours* Installed LSQuic on ubuntu VM. Added this use of this library to quicsrc plugin.
+
+
+### 10 Oct 2021
+
+* *1.0 hours* Had a preliminary read of the RTP test metrics Colin provided. Curious if these are applicable to reliable streams. Added questions to Q file for next meeting.
+* *1.0 hours* Added QUIC gstreamer project to source control. The makefile provided had no full clean target so it took time to determine which files should be added to src control.
+
