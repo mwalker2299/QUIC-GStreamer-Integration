@@ -20,7 +20,7 @@
 #ifndef _GST_QUICSRC_H_
 #define _GST_QUICSRC_H_
 
-#include <gst/base/gstbasesrc.h>
+#include <gst/base/gstpushsrc.h>
 
 G_BEGIN_DECLS
 
@@ -35,13 +35,13 @@ typedef struct _GstQuicsrcClass GstQuicsrcClass;
 
 struct _GstQuicsrc
 {
-  GstBaseSrc base_quicsrc;
+  GstPushSrc parent;
 
 };
 
 struct _GstQuicsrcClass
 {
-  GstBaseSrcClass base_quicsrc_class;
+  GstPushSrcClass parent_class;
 };
 
 GType gst_quicsrc_get_type (void);

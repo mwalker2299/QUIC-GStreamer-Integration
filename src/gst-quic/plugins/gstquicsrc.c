@@ -35,12 +35,31 @@
 #endif
 
 #include <gst/gst.h>
-#include <gst/base/gstbasesrc.h>
 #include "gstquicsrc.h"
 #include <lsquic.h>
 
 GST_DEBUG_CATEGORY_STATIC (gst_quicsrc_debug_category);
 #define GST_CAT_DEFAULT gst_quicsrc_debug_category
+
+/* pad templates */
+
+static GstStaticPadTemplate gst_quicsrc_src_template =
+GST_STATIC_PAD_TEMPLATE ("src",
+    GST_PAD_SRC,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS_ANY);
+
+enum
+{
+  PROP_0
+};
+
+
+/* class initialization */
+
+G_DEFINE_TYPE_WITH_CODE (GstQuicsrc, gst_quicsrc, GST_TYPE_PUSH_SRC,
+    GST_DEBUG_CATEGORY_INIT (gst_quicsrc_debug_category, "quicsrc", 0,
+        "debug category for quicsrc element"));
 
 /* prototypes */
 
@@ -71,39 +90,19 @@ static gboolean gst_quicsrc_unlock (GstBaseSrc * src);
 static gboolean gst_quicsrc_unlock_stop (GstBaseSrc * src);
 static gboolean gst_quicsrc_query (GstBaseSrc * src, GstQuery * query);
 static gboolean gst_quicsrc_event (GstBaseSrc * src, GstEvent * event);
-static GstFlowReturn gst_quicsrc_create (GstBaseSrc * src, guint64 offset,
-    guint size, GstBuffer ** buf);
 static GstFlowReturn gst_quicsrc_alloc (GstBaseSrc * src, guint64 offset,
     guint size, GstBuffer ** buf);
 static GstFlowReturn gst_quicsrc_fill (GstBaseSrc * src, guint64 offset,
     guint size, GstBuffer * buf);
 
-enum
-{
-  PROP_0
-};
-
-/* pad templates */
-
-static GstStaticPadTemplate gst_quicsrc_src_template =
-GST_STATIC_PAD_TEMPLATE ("src",
-    GST_PAD_SRC,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("application/unknown")
-    );
-
-
-/* class initialization */
-
-G_DEFINE_TYPE_WITH_CODE (GstQuicsrc, gst_quicsrc, GST_TYPE_BASE_SRC,
-    GST_DEBUG_CATEGORY_INIT (gst_quicsrc_debug_category, "quicsrc", 0,
-        "debug category for quicsrc element"));
+static GstFlowReturn gst_quicsrc_create (GstPushSrc * src, GstBuffer ** outbuf);
 
 static void
 gst_quicsrc_class_init (GstQuicsrcClass * klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS (klass);
+  GstPushSrcClass *push_src_class = (GstPushSrcClass *) klass;
 
   /* Setting up pads and setting metadata should be moved to
      base_class_init if you intend to subclass this class. */
@@ -136,10 +135,10 @@ gst_quicsrc_class_init (GstQuicsrcClass * klass)
   base_src_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_quicsrc_unlock_stop);
   base_src_class->query = GST_DEBUG_FUNCPTR (gst_quicsrc_query);
   base_src_class->event = GST_DEBUG_FUNCPTR (gst_quicsrc_event);
-  base_src_class->create = GST_DEBUG_FUNCPTR (gst_quicsrc_create);
   base_src_class->alloc = GST_DEBUG_FUNCPTR (gst_quicsrc_alloc);
   base_src_class->fill = GST_DEBUG_FUNCPTR (gst_quicsrc_fill);
 
+  push_src_class->create = GST_DEBUG_FUNCPTR (gst_quicsrc_create);
 }
 
 static void
@@ -383,8 +382,7 @@ gst_quicsrc_event (GstBaseSrc * src, GstEvent * event)
 /* ask the subclass to create a buffer with offset and size, the default
  * implementation will call alloc and fill. */
 static GstFlowReturn
-gst_quicsrc_create (GstBaseSrc * src, guint64 offset, guint size,
-    GstBuffer ** buf)
+gst_quicsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
 {
   GstQuicsrc *quicsrc = GST_QUICSRC (src);
 
