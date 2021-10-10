@@ -62,4 +62,5 @@
 
 * *1.0 hours* Had a preliminary read of the RTP test metrics Colin provided. Curious if these are applicable to reliable streams. Added questions to Q file for next meeting.
 * *1.0 hours* Added QUIC gstreamer project to source control. The makefile provided had no full clean target so it took time to determine which files should be added to src control.
+* *1.0 hours* Modified the QUIC src plugin such that it inherits from GstPushSrc.
 
