@@ -71,6 +71,8 @@ static void gst_quicsrc_set_property (GObject * object,
 static void gst_quicsrc_get_property (GObject * object,
     guint property_id, GValue * value, GParamSpec * pspec);
 
+static void gst_quicsrc_change_state (GstElement * element, GstStateChange transition);
+
 static void gst_quicsrc_dispose (GObject * object);
 static void gst_quicsrc_finalize (GObject * object);
 
@@ -90,13 +92,14 @@ static void
 gst_quicsrc_class_init (GstQuicsrcClass * klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
   GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS (klass);
   GstPushSrcClass *push_src_class = (GstPushSrcClass *) klass;
 
-  gst_element_class_add_static_pad_template (GST_ELEMENT_CLASS (klass),
+  gst_element_class_add_static_pad_template (element_class,
       &gst_quicsrc_src_template);
 
-  gst_element_class_set_static_metadata (GST_ELEMENT_CLASS (klass),
+  gst_element_class_set_static_metadata (element_class,
       "QUIC packet receiver", "Source/Network", "Receive packets over the network via QUIC",
       "Matthew Walker <mjwalker2299@gmail.com>");
 
@@ -104,6 +107,9 @@ gst_quicsrc_class_init (GstQuicsrcClass * klass)
   gobject_class->get_property = gst_quicsrc_get_property;
   gobject_class->dispose = gst_quicsrc_dispose;
   gobject_class->finalize = gst_quicsrc_finalize;
+
+  element_class->change_state = GST_DEBUG_FUNCPTR (gst_quicsrc_change_state);
+
   base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_quicsrc_get_caps);
 
   base_src_class->start = GST_DEBUG_FUNCPTR (gst_quicsrc_start);
@@ -151,6 +157,46 @@ gst_quicsrc_get_property (GObject * object, guint property_id,
       break;
   }
 }
+
+static void 
+gst_quicsrc_change_state (GstElement * element, GstStateChange transition)
+{
+    GstQuicsrc *quicsrc;
+    GstStateChangeReturn result;
+
+    quicsrc = GST_QUICSRC (element);
+
+    switch (transition)
+    {
+        case GST_STATE_CHANGE_NULL_TO_READY:
+            break;
+        case GST_STATE_CHANGE_READY_TO_PAUSED:
+            break;
+        case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
+            break;
+        default:
+            break;
+    }
+
+    // Chain up before releasing resources
+    result = GST_ELEMENT_CLASS (parent_class)->change_state (element, transition);
+    if (result == GST_STATE_CHANGE_FAILURE) {
+        return result;
+    }
+
+    switch (transition)
+    {
+        case GST_STATE_CHANGE_PLAYING_TO_PAUSED:
+            break;
+        case GST_STATE_CHANGE_PAUSED_TO_READY:
+            break;
+        case GST_STATE_CHANGE_READY_TO_NULL:
+            break;
+        default:
+            break;
+    }
+}
+
 
 void
 gst_quicsrc_dispose (GObject * object)
