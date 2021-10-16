@@ -64,3 +64,13 @@
 * *1.0 hours* Added QUIC gstreamer project to source control. The makefile provided had no full clean target so it took time to determine which files should be added to src control.
 * *1.0 hours* Modified the QUIC src plugin such that it inherits from GstPushSrc.
 
+## Week 4
+
+### 14 Oct 2021
+
+* *2.0 hours* Worked through lsquic tutorial
+* *3.5 hours* Began adding functionality to QUIC source GStreamer element
+* *0.5 hours* Meeting with Colin
+* *0.5 hours* Added minutes and plan to appropriate meeting file
+* *4.0 hours* Researched media streaming over various protocols and looked into how gstreamer split up data
+
