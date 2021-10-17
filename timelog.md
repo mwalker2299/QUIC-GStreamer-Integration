@@ -74,3 +74,12 @@
 * *0.5 hours* Added minutes and plan to appropriate meeting file
 * *4.0 hours* Researched media streaming over various protocols and looked into how gstreamer split up data
 
+### 16 OCT 2021
+
+* *3.0 hours* Continued work on QUIC source element.
+
+### 17 OCT
+
+* *7.0 hours* Continued work on QUIC source element. 
+* *1.0 hours* Looked into an issue where client-server handshake fails.
+
