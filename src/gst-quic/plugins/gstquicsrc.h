@@ -22,6 +22,20 @@
 
 #include <gst/base/gstpushsrc.h>
 
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <fcntl.h>
+
+#include <lsquic.h>
+
 G_BEGIN_DECLS
 
 #define GST_TYPE_QUICSRC   (gst_quicsrc_get_type())
@@ -33,9 +47,31 @@ G_BEGIN_DECLS
 typedef struct _GstQuicsrc GstQuicsrc;
 typedef struct _GstQuicsrcClass GstQuicsrcClass;
 
+struct stream_context {
+  char* buffer;
+  gssize offset;
+};
+
 struct _GstQuicsrc
 {
   GstPushSrc parent;
+
+  int socket;
+
+  /* QUIC server address info */
+  uint16_t port;
+  gchar *host;
+
+  /* Local address storage */
+  struct sockaddr_storage local_address;
+
+  /* QUIC Components */
+  gboolean connection_active;
+  lsquic_engine_t *engine;
+  lsquic_conn_t *connection;
+
+ /* stream contexts */
+ struct stream_context *stream_context;
 
 };
 
