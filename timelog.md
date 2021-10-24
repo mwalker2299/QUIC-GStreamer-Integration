@@ -5,7 +5,7 @@
 * 2310528
 * DR Colin Perkins
 
-## Week 1
+## Week 1 (16.25)
 
 ### 30 Sep 2021
 
@@ -28,7 +28,7 @@
 * *3.0 hours* performed further research on GStreamer and QUIC. 
 * *2.0 hours* worked on project requirements/plan.
 
-## Week 2
+## Week 2 (23.5)
 
 ### 4 Oct 2021
 
@@ -64,7 +64,7 @@
 * *1.0 hours* Added QUIC gstreamer project to source control. The makefile provided had no full clean target so it took time to determine which files should be added to src control.
 * *1.0 hours* Modified the QUIC src plugin such that it inherits from GstPushSrc.
 
-## Week 4
+## Week 3 (21.5)
 
 ### 14 Oct 2021
 
@@ -82,4 +82,19 @@
 
 * *7.0 hours* Continued work on QUIC source element. 
 * *1.0 hours* Looked into an issue where client-server handshake fails.
+
+
+## Week 4
+
+### 21 OCT
+
+* *5.5 hours* Identified cause of handshake failure within client element. Added an issue to the github for lsquic, hoping that they have insight. Using an earlier version of BoringSSL resolves the issue.
+* *0.5 hours* Meeting with Colin
+* *0.5 hours* Added minutes and plan to appropriate meeting file
+* *2.5 hours* Now that the handshake succeeds, continued developing QUIC client element. 
+
+
+### 24 OCT
+
+* *2.5 hours* QUIC client element can now successfully connect to a server, receive data and pass this data as a buffer down the pipeline.
 
