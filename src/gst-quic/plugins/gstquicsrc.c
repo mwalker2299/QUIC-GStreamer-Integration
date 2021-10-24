@@ -36,7 +36,11 @@
 
 #include <gst/gst.h>
 #include "gstquicsrc.h"
-#include <lsquic.h>
+
+#define QUIC_CLIENT 0
+#define QUIC_DEFAULT_PORT 12345
+#define QUIC_DEFAULT_HOST "127.0.0.1"
+
 
 GST_DEBUG_CATEGORY_STATIC (gst_quicsrc_debug_category);
 #define GST_CAT_DEFAULT gst_quicsrc_debug_category
@@ -53,7 +57,9 @@ GST_STATIC_PAD_TEMPLATE ("src",
 
 enum
 {
-  PROP_0
+  PROP_0,
+  PROP_HOST,
+  PROP_PORT
 };
 
 
@@ -104,6 +110,16 @@ gst_quicsrc_class_init (GstQuicsrcClass * klass)
   gobject_class->get_property = gst_quicsrc_get_property;
   gobject_class->dispose = gst_quicsrc_dispose;
   gobject_class->finalize = gst_quicsrc_finalize;
+
+  g_object_class_install_property (gobject_class, PROP_HOST,
+      g_param_spec_string ("host", "Host",
+          "The server IP address to connect to", QUIC_DEFAULT_HOST,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+  g_object_class_install_property (gobject_class, PROP_PORT,
+      g_param_spec_int ("port", "Port", "The port used by the quic server", 0,
+          G_MAXUINT16, QUIC_DEFAULT_PORT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_quicsrc_get_caps);
 
   base_src_class->start = GST_DEBUG_FUNCPTR (gst_quicsrc_start);
@@ -120,9 +136,18 @@ gst_quicsrc_class_init (GstQuicsrcClass * klass)
 static void
 gst_quicsrc_init (GstQuicsrc * quicsrc)
 {
+  quicsrc->port = QUIC_DEFAULT_PORT;
+  quicsrc->host = g_strdup (QUIC_DEFAULT_HOST);
+  quicsrc->socket = -1;
+  quicsrc->connection_active = FALSE;
+  quicsrc->engine = NULL;
+  quicsrc->connection = NULL;
+
+  quicsrc->stream_context->offset = 0;
+  quicsrc->stream_context->buffer = {0};
 }
 
-void
+static void
 gst_quicsrc_set_property (GObject * object, guint property_id,
     const GValue * value, GParamSpec * pspec)
 {
@@ -131,23 +156,39 @@ gst_quicsrc_set_property (GObject * object, guint property_id,
   GST_DEBUG_OBJECT (quicsrc, "set_property");
 
   switch (property_id) {
+    case PROP_HOST:
+      if (!g_value_get_string (value)) {
+        g_warning ("host property cannot be NULL");
+        break;
+      }
+      g_free (quicsrc->host);
+      quicsrc->host = g_strdup (g_value_get_string (value));
+      break;
+    case PROP_PORT:
+      quicsrc->port = g_value_get_int (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
 }
 
-void
-gst_quicsrc_get_property (GObject * object, guint property_id,
+static void
+gst_quicsrc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
   GstQuicsrc *quicsrc = GST_QUICSRC (object);
-
   GST_DEBUG_OBJECT (quicsrc, "get_property");
 
-  switch (property_id) {
+  switch (prop_id) {
+    case PROP_HOST:
+      g_value_set_string (value, quicsrc->host);
+      break;
+    case PROP_PORT:
+      g_value_set_int (value, quicsrc->port);
+      break;
     default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
 }
