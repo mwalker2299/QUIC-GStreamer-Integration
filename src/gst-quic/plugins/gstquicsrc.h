@@ -20,6 +20,7 @@
 #ifndef _GST_QUICSRC_H_
 #define _GST_QUICSRC_H_
 
+#include <gst/gst.h>
 #include <gst/base/gstpushsrc.h>
 
 #include <stddef.h>
@@ -47,11 +48,6 @@ G_BEGIN_DECLS
 typedef struct _GstQuicsrc GstQuicsrc;
 typedef struct _GstQuicsrcClass GstQuicsrcClass;
 
-struct stream_context {
-  char* buffer;
-  gssize offset;
-};
-
 struct _GstQuicsrc
 {
   GstPushSrc parent;
@@ -59,7 +55,7 @@ struct _GstQuicsrc
   int socket;
 
   /* QUIC server address info */
-  uint16_t port;
+  guint16 port;
   gchar *host;
 
   /* Local address storage */
@@ -70,8 +66,8 @@ struct _GstQuicsrc
   lsquic_engine_t *engine;
   lsquic_conn_t *connection;
 
- /* stream contexts */
- struct stream_context *stream_context;
+  gsize offset;
+  gchar* buffer;
 
 };
 

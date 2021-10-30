@@ -36,6 +36,7 @@
 
 #include <gst/gst.h>
 #include "gstquicsrc.h"
+#include "gstquicutils.h"
 
 #define QUIC_CLIENT 0
 #define QUIC_DEFAULT_PORT 12345
@@ -116,8 +117,6 @@ static void gst_quicsrc_set_ecn_ancillary_data (struct msghdr *msg, const struct
 static int gst_quicsrc_send_packets (void *packets_out_ctx, const struct lsquic_out_spec *packet_specs,
                                      unsigned packet_count);
 
-static int gst_quicsrc_log_buf (void *ctx, const char *buf, size_t len);
-
 /* QUIC callbacks passed to quic engine */
 static struct lsquic_stream_if quicsrc_callbacks =
 {
@@ -129,8 +128,6 @@ static struct lsquic_stream_if quicsrc_callbacks =
     .on_write           = gst_quicsrc_on_write,
     .on_close           = gst_quicsrc_on_close,
 };
-
-static const struct lsquic_logger_if logger_if = { gst_quicsrc_log_buf, };
 
 static void
 gst_quicsrc_class_init (GstQuicsrcClass * klass)
@@ -182,8 +179,8 @@ gst_quicsrc_init (GstQuicsrc * quicsrc)
   quicsrc->engine = NULL;
   quicsrc->connection = NULL;
 
-  quicsrc->stream_context->offset = 0;
-  quicsrc->stream_context->buffer = {0};
+  quicsrc->offset = 0;
+  quicsrc->buffer = malloc(100000);
 }
 
 static void
@@ -306,15 +303,6 @@ gst_quicsrc_on_hsk_done(lsquic_conn_t *conn, enum lsquic_hsk_status status)
     }
 }
 
-static int
-gst_quicsrc_log_buf (void *ctx, const char *buf, size_t len)
-{
-    FILE *out = ctx;
-    fwrite(buf, 1, len, out);
-    fflush(out);
-    return 0;
-}
-
 static void
 gst_quicsrc_on_conn_closed (struct lsquic_conn *conn)
 {
@@ -340,10 +328,12 @@ gst_quicsrc_readf (void *ctx, const unsigned char *data, size_t len, int fin)
     struct lsquic_stream *stream = (struct lsquic_stream *) ctx;
     GstQuicsrc *quicsrc = GST_QUICSRC ((void *) lsquic_stream_get_ctx(stream));
 
-    if (len)
-        quicsrc->stream_context->offset = len;
-        memcpy(quicsrc->stream_context->buffer, data, len);
+    if (len) 
+    {
+        quicsrc->offset = len;
+        memcpy(quicsrc->buffer, data, len);
         GST_DEBUG_OBJECT(quicsrc, "MW: Read from stream");
+    }
     if (fin)
     {
         fflush(stdout);
@@ -584,7 +574,7 @@ gst_quicsrc_read_socket (GstQuicsrc * quicsrc)
 
     local_sas = quicsrc->local_address;
     ecn = 0;
-    tut_proc_ancillary(&msg, &local_sas, &ecn);
+    gst_quicsrc_read_ancillary_data(&msg, &local_sas, &ecn);
 
     (void) lsquic_engine_packet_in(quicsrc->engine, buf, nread,
         (struct sockaddr *) &local_sas,
@@ -601,11 +591,9 @@ gst_quicsrc_start (GstBaseSrc * src)
   socklen_t socklen;
   struct lsquic_engine_api engine_api;
   struct lsquic_engine_settings engine_settings;
-  union {
-        struct sockaddr     sa;
-        struct sockaddr_in  addr4;
-        struct sockaddr_in6 addr6;
-  } server_addr;
+  server_addr_u server_addr;
+
+  FILE *s_log_fh = stderr;
 
   GstQuicsrc *quicsrc = GST_QUICSRC (src);
 
@@ -619,36 +607,27 @@ gst_quicsrc_start (GstBaseSrc * src)
     return FALSE;
   }
 
-  FILE *s_log_fh = stderr;
+  // /* Initialize logging */
+  // if (0 != lsquic_set_log_level("debug"))
+  // {
+  //   GST_ELEMENT_ERROR (quicsrc, LIBRARY, INIT,
+  //       (NULL),
+  //       ("Failed to initialise lsquic"));
+  //   return FALSE;
+  // }
 
-  if (0 != lsquic_set_log_level("debug"))
-  {
-    GST_ELEMENT_ERROR (quicsrc, LIBRARY, INIT,
-        (NULL),
-        ("Failed to initialise lsquic"));
-    return FALSE;
-  }
+  // setvbuf(s_log_fh, NULL, _IOLBF, 0);
+  // lsquic_logger_init(&logger_if, s_log_fh, LLTS_HHMMSSUS);
 
   // Initialize engine settings to default values
   lsquic_engine_init_settings(&engine_settings, QUIC_CLIENT);
 
   // Parse IP address and set port number
-  if (inet_pton(AF_INET, quicsrc->host, &server_addr.addr4.sin_addr))
+  if (!gst_quic_set_addr(quicsrc->host, quicsrc->port, &server_addr))
   {
-      server_addr.addr4.sin_family = AF_INET;
-      server_addr.addr4.sin_port   = htons(quicsrc->port);
-  }
-  else if (memset(&server_addr.addr6, 0, sizeof(server_addr.addr6)),
-      inet_pton(AF_INET6, quicsrc->host, &server_addr.addr6.sin6_addr))
-  {
-      server_addr.addr6.sin6_family = AF_INET6;
-      server_addr.addr6.sin6_port   = htons(quicsrc->port);
-  }
-  else
-  {
-    GST_ELEMENT_ERROR (quicsrc, RESOURCE, OPEN_READ, (NULL),
-      ("Failed to resolve host: %s", quicsrc->host));
-    return FALSE;
+      GST_ELEMENT_ERROR (quicsrc, RESOURCE, OPEN_READ, (NULL),
+        ("Failed to resolve host: %s", quicsrc->host));
+      return FALSE;
   }
 
   // Create socket
@@ -707,10 +686,6 @@ gst_quicsrc_start (GstBaseSrc * src)
         ("Failed to bind socket"));
       return FALSE;
   }
-
-  // /* Initialize logging */
-  //   setvbuf(s_log_fh, NULL, _IOLBF, 0);
-  //   lsquic_logger_init(&logger_if, s_log_fh, LLTS_HHMMSSUS);
 
   // Initialize engine callbacks
   memset(&engine_api, 0, sizeof(engine_api));
@@ -831,13 +806,13 @@ gst_quicsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
 
   gst_quicsrc_read_socket(quicsrc);
 
-  *outbuf = gst_buffer_new_and_alloc(quicsrc->stream_context->offset);
+  *outbuf = gst_buffer_new_and_alloc(quicsrc->offset);
   gst_buffer_map (*outbuf, &map, GST_MAP_READWRITE);
 
-  memcpy(map.data, quicsrc->stream_context->buffer, quicsrc->stream_context->offset);
+  memcpy(map.data, quicsrc->buffer, quicsrc->offset);
 
   gst_buffer_unmap(*outbuf, &map);
-  gst_buffer_resize(*outbuf, 0, quicsrc->stream_context->offset);
+  gst_buffer_resize(*outbuf, 0, quicsrc->offset);
 
   GST_LOG_OBJECT (quicsrc, "create");
 
