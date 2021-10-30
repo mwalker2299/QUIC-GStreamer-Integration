@@ -47,6 +47,7 @@
 
 #include <gst/gst.h>
 #include "gstquicsrc.h"
+#include "gstquicsink.h"
 
 static gboolean
 plugin_init (GstPlugin * plugin)
@@ -55,8 +56,12 @@ plugin_init (GstPlugin * plugin)
     return FALSE;
   }
 
+  if (!gst_element_register (plugin, "quicsink", GST_RANK_NONE, GST_TYPE_QUICSINK)){
+    return FALSE;
+  } 
+
   return TRUE;
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR, quic, "transfer data via QUIC", plugin_init, "1.16.2", "LGPL",   /* FIXME */
+GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR, quic, "transfer data via QUIC", plugin_init, "1.19.0", "LGPL",   /* FIXME */
     "GStreamer", "http://gstreamer.net/")
