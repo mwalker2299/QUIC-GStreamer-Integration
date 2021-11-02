@@ -210,13 +210,13 @@ gst_quicsrc_set_property (GObject * object, guint property_id,
 }
 
 static void
-gst_quicsrc_get_property (GObject * object, guint prop_id,
+gst_quicsrc_get_property (GObject * object, guint property_id,
     GValue * value, GParamSpec * pspec)
 {
   GstQuicsrc *quicsrc = GST_QUICSRC (object);
   GST_DEBUG_OBJECT (quicsrc, "get_property");
 
-  switch (prop_id) {
+  switch (property_id) {
     case PROP_HOST:
       g_value_set_string (value, quicsrc->host);
       break;
@@ -224,7 +224,7 @@ gst_quicsrc_get_property (GObject * object, guint prop_id,
       g_value_set_int (value, quicsrc->port);
       break;
     default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
 }
