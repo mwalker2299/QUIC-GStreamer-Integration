@@ -40,6 +40,8 @@
 #include "gstquicutils.h"
 
 #define QUIC_SERVER 1
+#define QUIC_DEFAULT_PORT 12345
+#define QUIC_DEFAULT_HOST "127.0.0.1"
 
 GST_DEBUG_CATEGORY_STATIC (gst_quicsink_debug_category);
 #define GST_CAT_DEFAULT gst_quicsink_debug_category
@@ -84,7 +86,9 @@ static GstFlowReturn gst_quicsink_render_list (GstBaseSink * sink,
 
 enum
 {
-  PROP_0
+  PROP_0,
+  PROP_HOST,
+  PROP_PORT
 };
 
 /* pad templates */
@@ -120,6 +124,16 @@ gst_quicsink_class_init (GstQuicsinkClass * klass)
   gobject_class->get_property = gst_quicsink_get_property;
   gobject_class->dispose = gst_quicsink_dispose;
   gobject_class->finalize = gst_quicsink_finalize;
+
+  g_object_class_install_property (gobject_class, PROP_HOST,
+      g_param_spec_string ("host", "Host",
+          "The IP address on which the server receives connections", QUIC_DEFAULT_HOST,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+  g_object_class_install_property (gobject_class, PROP_PORT,
+      g_param_spec_int ("port", "Port", "The port used by the quic server", 0,
+          G_MAXUINT16, QUIC_DEFAULT_PORT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   base_sink_class->get_caps = GST_DEBUG_FUNCPTR (gst_quicsink_get_caps);
   // base_sink_class->set_caps = GST_DEBUG_FUNCPTR (gst_quicsink_set_caps);
   // base_sink_class->fixate = GST_DEBUG_FUNCPTR (gst_quicsink_fixate);
@@ -157,6 +171,17 @@ gst_quicsink_set_property (GObject * object, guint property_id,
   GST_DEBUG_OBJECT (quicsink, "set_property");
 
   switch (property_id) {
+    case PROP_HOST:
+      if (!g_value_get_string (value)) {
+        g_warning ("host property cannot be NULL");
+        break;
+      }
+      g_free (quicsink->host);
+      quicsink->host = g_strdup (g_value_get_string (value));
+      break;
+    case PROP_PORT:
+      quicsink->port = g_value_get_int (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -168,10 +193,15 @@ gst_quicsink_get_property (GObject * object, guint property_id,
     GValue * value, GParamSpec * pspec)
 {
   GstQuicsink *quicsink = GST_QUICSINK (object);
-
   GST_DEBUG_OBJECT (quicsink, "get_property");
 
   switch (property_id) {
+    case PROP_HOST:
+      g_value_set_string (value, quicsink->host);
+      break;
+    case PROP_PORT:
+      g_value_set_int (value, quicsink->port);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -311,6 +341,8 @@ gst_quicsink_start (GstBaseSink * sink)
         ("Failed to resolve host: %s", quicsink->host));
       return FALSE;
   }
+
+
 
   return TRUE;
 }
