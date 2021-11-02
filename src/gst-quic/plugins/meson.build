@@ -11,7 +11,11 @@ configure_file(output : 'config.h', configuration : cdata)
 
 
 lsquic_dep = cc.find_library('lsquic', dirs: '/home/matt/Documents/lsquic/src/liblsquic/', required: true)
-inc = include_directories('/home/matt/Documents/lsquic/include')
+ssl_dep    = cc.find_library('ssl', dirs: '/home/matt/Documents/boringssl/ssl/', required:true)
+crypto_dep = cc.find_library('crypto', dirs: '/home/matt/Documents/boringssl/crypto/', required:true)
+
+lsquic_inc    = include_directories('/home/matt/Documents/lsquic/include')
+boringssl_inc = include_directories('/home/matt/Documents/boringssl/include')
 
 
 
@@ -26,8 +30,8 @@ inc = include_directories('/home/matt/Documents/lsquic/include')
 gstquic = library('gstquic',
   gstquic_sources,
   c_args: plugin_c_args,
-  include_directories : inc,
-  dependencies : [gst_dep, gstbase_dep, lsquic_dep],
+  include_directories : [lsquic_inc, boringssl_inc],
+  dependencies : [gst_dep, gstbase_dep, lsquic_dep, ssl_dep, crypto_dep],
   install : true,
   install_dir : plugins_install_dir,
 )

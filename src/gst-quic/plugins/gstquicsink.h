@@ -35,6 +35,10 @@
 #include <sys/socket.h>
 #include <fcntl.h>
 
+#include <openssl/pem.h>
+#include <openssl/x509.h>
+#include <openssl/ssl.h>
+
 #include <lsquic.h>
 
 G_BEGIN_DECLS
@@ -51,6 +55,13 @@ typedef struct _GstQuicsinkClass GstQuicsinkClass;
 struct _GstQuicsink
 {
   GstBaseSink parent;
+
+  /* SSL context */
+  SSL_CTX *ssl_ctx;
+
+  /* SSL key and cert path */
+  gchar *cert_file;
+  gchar *key_file;
 
   /* QUIC server address info */
   guint16 port;

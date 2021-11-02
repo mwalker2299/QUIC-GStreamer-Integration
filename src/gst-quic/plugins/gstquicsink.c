@@ -39,15 +39,17 @@
 #include "gstquicsink.h"
 #include "gstquicutils.h"
 
+//FIXME: Theses are test defaults and should be updated to a more appropriate value
 #define QUIC_SERVER 1
 #define QUIC_DEFAULT_PORT 12345
 #define QUIC_DEFAULT_HOST "127.0.0.1"
+#define QUIC_DEFAULT_CERTIFICATE_PATH "/home/matt/Documents/lsquic-tutorial/mycert-cert.pem"
+#define QUIC_DEFAULT_KEY_PATH "/home/matt/Documents/lsquic-tutorial/mycert-key.pem"
 
 GST_DEBUG_CATEGORY_STATIC (gst_quicsink_debug_category);
 #define GST_CAT_DEFAULT gst_quicsink_debug_category
 
-/* prototypes */
-
+/* gstreamer method prototypes */
 
 static void gst_quicsink_set_property (GObject * object,
     guint property_id, const GValue * value, GParamSpec * pspec);
@@ -84,11 +86,17 @@ static GstFlowReturn gst_quicsink_render (GstBaseSink * sink,
 static GstFlowReturn gst_quicsink_render_list (GstBaseSink * sink,
     GstBufferList * buffer_list);
 
+
+/* lsquic method prototypes */
+static void gst_quicsink_load_cert_and_key (GstQuicsink * quicsink);
+
 enum
 {
   PROP_0,
   PROP_HOST,
-  PROP_PORT
+  PROP_PORT,
+  PROP_CERT,
+  PROP_KEY
 };
 
 /* pad templates */
@@ -129,6 +137,14 @@ gst_quicsink_class_init (GstQuicsinkClass * klass)
       g_param_spec_string ("host", "Host",
           "The IP address on which the server receives connections", QUIC_DEFAULT_HOST,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+  g_object_class_install_property (gobject_class, PROP_CERT,
+      g_param_spec_string ("cert", "Cert",
+          "The path to the SSL certificate file", QUIC_DEFAULT_CERTIFICATE_PATH,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+  g_object_class_install_property (gobject_class, PROP_KEY,
+      g_param_spec_string ("key", "Key",
+          "The path to the SSL private key file", QUIC_DEFAULT_KEY_PATH,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_PORT,
       g_param_spec_int ("port", "Port", "The port used by the quic server", 0,
           G_MAXUINT16, QUIC_DEFAULT_PORT,
@@ -157,9 +173,48 @@ gst_quicsink_class_init (GstQuicsinkClass * klass)
 
 }
 
+/* This creates a new ssl context. TLS_method indicates that the highest 
+ * mutually supported version will be negotiated. Since quic requires TLS 1.3
+ * at minimum, we later restrict the possible protocol versions to TLS 1.3.
+ * If there are any SSL error, a Gstreamer error will be thrown, causing the 
+ * pipeline to be reset.
+*/
+static void
+gst_quicsink_load_cert_and_key (GstQuicsink * quicsink)
+{
+    quicsink->ssl_ctx = SSL_CTX_new(TLS_method());
+    if (!quicsink->ssl_ctx)
+    {
+        GST_ELEMENT_ERROR (quicsink, LIBRARY, FAILED,
+          (NULL),
+          ("Could not create an SSL context"));
+    }
+    SSL_CTX_set_min_proto_version(quicsink->ssl_ctx, TLS1_3_VERSION);
+    SSL_CTX_set_max_proto_version(quicsink->ssl_ctx, TLS1_3_VERSION);
+    if (!SSL_CTX_use_certificate_chain_file(quicsink->ssl_ctx, quicsink->cert_file))
+    {
+        SSL_CTX_free(quicsink->ssl_ctx);
+        GST_ELEMENT_ERROR (quicsink, LIBRARY, FAILED,
+          (NULL),
+          ("SSL_CTX_use_certificate_chain_file failed, is the path to the cert file correct?"));
+    }
+    if (!SSL_CTX_use_PrivateKey_file(quicsink->ssl_ctx, quicsink->key_file,
+                                                            SSL_FILETYPE_PEM))
+    {
+        SSL_CTX_free(quicsink->ssl_ctx);
+        GST_ELEMENT_ERROR (quicsink, LIBRARY, FAILED,
+          (NULL),
+          ("SSL_CTX_use_PrivateKey_file failed, is the path to the key file correct?"));
+    }
+}
+
 static void
 gst_quicsink_init (GstQuicsink * quicsink)
 {
+  quicsink->port = QUIC_DEFAULT_PORT;
+  quicsink->host = g_strdup (QUIC_DEFAULT_HOST);
+  quicsink->cert_file = g_strdup (QUIC_DEFAULT_CERTIFICATE_PATH);
+  quicsink->key_file = g_strdup (QUIC_DEFAULT_KEY_PATH);
 }
 
 void
@@ -182,6 +237,22 @@ gst_quicsink_set_property (GObject * object, guint property_id,
     case PROP_PORT:
       quicsink->port = g_value_get_int (value);
       break;
+    case PROP_CERT:
+      if (!g_value_get_string (value)) {
+        g_warning ("SSL certificate path property cannot be NULL");
+        break;
+      }
+      g_free (quicsink->cert_file);
+      quicsink->cert_file = g_strdup (g_value_get_string (value));
+      break;
+    case PROP_KEY:
+      if (!g_value_get_string (value)) {
+        g_warning ("SSL key path property cannot be NULL");
+        break;
+      }
+      g_free (quicsink->key_file);
+      quicsink->key_file = g_strdup (g_value_get_string (value));
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -201,6 +272,12 @@ gst_quicsink_get_property (GObject * object, guint property_id,
       break;
     case PROP_PORT:
       g_value_set_int (value, quicsink->port);
+      break;
+    case PROP_CERT:
+      g_value_set_string (value, quicsink->cert_file);
+      break;
+    case PROP_KEY:
+      g_value_set_string (value, quicsink->key_file);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -342,7 +419,7 @@ gst_quicsink_start (GstBaseSink * sink)
       return FALSE;
   }
 
-
+  gst_quicsink_load_cert_and_key(quicsink);
 
   return TRUE;
 }
