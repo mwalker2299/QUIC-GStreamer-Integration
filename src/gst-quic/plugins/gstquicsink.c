@@ -215,6 +215,14 @@ gst_quicsink_init (GstQuicsink * quicsink)
   quicsink->host = g_strdup (QUIC_DEFAULT_HOST);
   quicsink->cert_file = g_strdup (QUIC_DEFAULT_CERTIFICATE_PATH);
   quicsink->key_file = g_strdup (QUIC_DEFAULT_KEY_PATH);
+
+  quicsink->socket = -1;
+  quicsink->connection_active = FALSE;
+  quicsink->engine = NULL;
+  quicsink->connection = NULL;
+  quicsink->ssl_ctx = NULL;
+
+  memset(&quicsink->stream_ctx, 0, sizeof(quicsink->stream_ctx));
 }
 
 void
