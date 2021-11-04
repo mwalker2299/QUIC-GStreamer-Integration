@@ -46,6 +46,16 @@
 #define QUIC_DEFAULT_CERTIFICATE_PATH "/home/matt/Documents/lsquic-tutorial/mycert-cert.pem"
 #define QUIC_DEFAULT_KEY_PATH "/home/matt/Documents/lsquic-tutorial/mycert-key.pem"
 
+/* We are interested in the original destination address of received packets.
+  The IP_RECVORIGDSTADDR flag can be set on sockets to allow this. However,
+  if this flag is not defined, we shall use the more geneal IP_PKTINFO flag.
+*/
+#if defined(IP_RECVORIGDSTADDR)
+#define IP_RECVDESTADDR_FLAG IP_RECVORIGDSTADDR
+#else
+#define IP_RECVDESTADDR_FLAG IP_PKTINFO
+#endif
+
 GST_DEBUG_CATEGORY_STATIC (gst_quicsink_debug_category);
 #define GST_CAT_DEFAULT gst_quicsink_debug_category
 
@@ -389,6 +399,7 @@ gst_quicsink_start (GstBaseSink * sink)
   struct lsquic_engine_api engine_api;
   struct lsquic_engine_settings engine_settings;
   server_addr_u server_addr;
+  int activate, socket_opt_result;
 
   GstQuicsink *quicsink = GST_QUICSINK (sink);
 
@@ -427,8 +438,86 @@ gst_quicsink_start (GstBaseSink * sink)
       return FALSE;
   }
 
+  // Set up SSL context
   gst_quicsink_load_cert_and_key(quicsink);
 
+  // Create socket
+  quicsink->socket = socket(server_addr.sa.sa_family, SOCK_DGRAM, 0);
+
+  GST_DEBUG_OBJECT(quicsink, "Socket fd = %d", quicsink->socket);
+
+  if (quicsink->socket < 0)
+  {
+    GST_ELEMENT_ERROR (quicsink, RESOURCE, OPEN_READ, (NULL),
+      ("Failed to open socket"));
+    return FALSE;
+  }
+
+  // set socket to be non-blocking
+  int socket_flags = fcntl(quicsink->socket, F_GETFL);
+  if (socket_flags == -1) 
+  {
+    GST_ELEMENT_ERROR (quicsink, RESOURCE, OPEN_READ, (NULL),
+        ("Failed to retrieve socket_flags using fcntl"));
+    return FALSE;
+  }
+
+  socket_flags |= O_NONBLOCK;
+  if (0 != fcntl(quicsink->socket, F_SETFL, socket_flags)) 
+  {
+    GST_ELEMENT_ERROR (quicsink, RESOURCE, OPEN_READ, (NULL),
+        ("Failed to set socket_flags using fcntl"));
+    return FALSE;
+  }
+
+  //TODO: Refactor into a gstquic utils function
+  //set ip flags
+  //Set flags to allow the original destination address to be retrieved.
+  activate = 1;
+  if (AF_INET == server_addr.sa.sa_family)
+  {
+      socket_opt_result = setsockopt(quicsink->socket, IPPROTO_IP, IP_RECVDESTADDR_FLAG, &activate, sizeof(activate));
+  }
+  else 
+  {
+      socket_opt_result = setsockopt(quicsink->socket, IPPROTO_IPV6, IPV6_RECVPKTINFO, &activate, sizeof(activate));
+  }
+
+  if (0 != socket_opt_result) 
+  {
+    GST_ELEMENT_ERROR (quicsink, RESOURCE, OPEN_READ, (NULL),
+        ("Failed to set option for original destination address support using setsockopt"));
+    return FALSE;
+  }
+
+  // Activate IP_TOS field manipulation to allow ecn to be set
+  if (AF_INET == server_addr.sa.sa_family)
+  {
+      socket_opt_result = setsockopt(quicsink->socket, IPPROTO_IP, IP_RECVTOS, &activate, sizeof(activate));
+  }
+  else
+  {
+      socket_opt_result = setsockopt(quicsink->socket, IPPROTO_IPV6, IPV6_RECVTCLASS, &activate, sizeof(activate));
+  }
+
+  if (0 != socket_opt_result) 
+  {
+    GST_ELEMENT_ERROR (quicsink, RESOURCE, OPEN_READ, (NULL),
+        ("Failed to add ecn support using setsockopt"));
+    return FALSE;
+  }
+
+  // Bind socket to address of our server and save local address in a sockaddr_storage struct.
+  // sockaddr_storage is used as it is big enough to allow IPV6 addresses to be stored.
+  socklen = sizeof(server_addr);
+  if (0 != bind(quicsink->socket, &server_addr.sa, socklen))
+  {
+      GST_ELEMENT_ERROR (quicsink, RESOURCE, OPEN_READ, (NULL),
+        ("Failed to bind socket %d", errno));
+      return FALSE;
+  }
+  memcpy(&(quicsink->local_address), &server_addr, sizeof(server_addr));
+  
   return TRUE;
 }
 
