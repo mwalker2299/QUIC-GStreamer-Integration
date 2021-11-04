@@ -52,7 +52,7 @@ struct _GstQuicsrc
 {
   GstPushSrc parent;
 
-  int socket;
+  gint socket;
 
   /* QUIC server address info */
   guint16 port;
