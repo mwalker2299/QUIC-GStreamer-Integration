@@ -97,8 +97,29 @@ static GstFlowReturn gst_quicsink_render_list (GstBaseSink * sink,
     GstBufferList * buffer_list);
 
 
-/* lsquic method prototypes */
+/* Quic functions */
 static void gst_quicsink_load_cert_and_key (GstQuicsink * quicsink);
+static SSL_CTX *gst_quicsink_get_ssl_ctx (void *peer_ctx);
+static lsquic_conn_ctx_t *gst_quicsink_on_new_conn (void *stream_if_ctx, struct lsquic_conn *conn);
+static void gst_quicsink_on_hsk_done(lsquic_conn_t *conn, enum lsquic_hsk_status status);
+static void gst_quicsink_on_conn_closed (struct lsquic_conn *conn);
+static lsquic_stream_ctx_t *gst_quicsink_on_new_stream (void *stream_if_ctx, struct lsquic_stream *stream);
+static size_t gst_quicsink_readf (void *ctx, const unsigned char *data, size_t len, int fin);
+static void gst_quicsink_on_read (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx);
+static void gst_quicsink_on_write (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx);
+static void gst_quicsink_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx);
+
+/* QUIC callbacks passed to quic engine */
+static struct lsquic_stream_if quicsink_callbacks =
+{
+    .on_new_conn        = gst_quicsink_on_new_conn,
+    .on_hsk_done        = gst_quicsink_on_hsk_done,
+    .on_conn_closed     = gst_quicsink_on_conn_closed,
+    .on_new_stream      = gst_quicsink_on_new_stream,
+    .on_read            = gst_quicsink_on_read,
+    .on_write           = gst_quicsink_on_write,
+    .on_close           = gst_quicsink_on_close,
+};
 
 enum
 {
@@ -183,6 +204,9 @@ gst_quicsink_class_init (GstQuicsinkClass * klass)
 
 }
 
+//FIXME: pass this as part of the peer_ctx:
+static SSL_CTX *static_ssl_ctx;
+
 /* This creates a new ssl context. TLS_method indicates that the highest 
  * mutually supported version will be negotiated. Since quic requires TLS 1.3
  * at minimum, we later restrict the possible protocol versions to TLS 1.3.
@@ -216,6 +240,136 @@ gst_quicsink_load_cert_and_key (GstQuicsink * quicsink)
           (NULL),
           ("SSL_CTX_use_PrivateKey_file failed, is the path to the key file correct?"));
     }
+    static_ssl_ctx = quicsink->ssl_ctx;
+}
+
+static SSL_CTX *
+gst_quicsink_get_ssl_ctx (void *peer_ctx)
+{
+    return static_ssl_ctx;
+}
+
+static lsquic_conn_ctx_t *gst_quicsink_on_new_conn (void *stream_if_ctx, struct lsquic_conn *conn)
+{
+  GstQuicsink *quicsink = GST_QUICSINK (stream_if_ctx);
+  GST_DEBUG_OBJECT(quicsink,"MW: Connection created");
+  quicsink->connection_active = TRUE;
+  return (void *) quicsink;
+}
+
+static void gst_quicsink_on_hsk_done(lsquic_conn_t *conn, enum lsquic_hsk_status status)
+{
+  GstQuicsink *quicsink = GST_QUICSINK ((void *) lsquic_conn_get_ctx(conn));
+
+  switch (status)
+  {
+  case LSQ_HSK_OK:
+  case LSQ_HSK_RESUMED_OK:
+      GST_DEBUG_OBJECT(quicsink, "MW: Handshake completed successfully");
+      break;
+  default:
+      GST_ELEMENT_ERROR (quicsink, RESOURCE, OPEN_READ, (NULL),
+        ("MW: Handshake with client failed"));
+      break;
+  }
+}
+
+static void gst_quicsink_on_conn_closed (struct lsquic_conn *conn)
+{
+    GstQuicsink *quicsink = GST_QUICSINK ((void *) lsquic_conn_get_ctx(conn));
+
+    // Current set-up assumes that there will be a single client and that they,
+    // will not reconnect. This may change in the future.
+    GST_DEBUG_OBJECT(quicsink, "MW: Connection closed, send EOS to pipeline");
+    quicsink->connection_active = FALSE;
+}
+
+//FIXME: This function is currently set up for test purpose. It will need to be modified.
+static lsquic_stream_ctx_t *gst_quicsink_on_new_stream (void *stream_if_ctx, struct lsquic_stream *stream)
+{
+    GstQuicsink *quicsink = GST_QUICSINK (stream_if_ctx);
+    GST_DEBUG_OBJECT(quicsink, "MW: created new stream");
+    //FIXME: For now, as a test, we want to read a string, reverse it and send it back
+    lsquic_stream_wantread(stream, 1);
+    return (void *) quicsink;
+}
+
+
+//FIXME: This function is currently set up for test purpose. It will need to be modified.
+static size_t gst_quicsink_readf (void *ctx, const unsigned char *data, size_t len, int fin)
+{
+    struct lsquic_stream *stream = (struct lsquic_stream *) ctx;
+    GstQuicsink *quicsink = GST_QUICSINK ((void *) lsquic_stream_get_ctx(stream));
+
+    if (len) 
+    {
+        quicsink->stream_ctx.offset = len;
+        memcpy(quicsink->stream_ctx.buffer, data, len);
+        GST_DEBUG_OBJECT(quicsink, "MW: Read %lu bytes from stream", len);
+        printf("Read %s", quicsink->stream_ctx.buffer);
+        fflush(stdout);
+    }
+    if (fin)
+    {
+        GST_DEBUG_OBJECT(quicsink, "MW: Read end of stream, for the purpose of this test we want to write the reverse back");
+        lsquic_stream_shutdown(stream, 0);
+        lsquic_stream_wantwrite(stream, 1);
+    }
+    return len;
+}
+
+//FIXME: This function is currently set up for test purpose. It will need to be modified.
+static void gst_quicsink_on_read (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx)
+{
+    GstQuicsink *quicsink = GST_QUICSINK (stream_ctx);
+    ssize_t bytes_read;
+
+    bytes_read = lsquic_stream_readf(stream, gst_quicsink_readf, stream);
+    if (bytes_read < 0)
+    {
+        GST_ELEMENT_ERROR (quicsink, RESOURCE, READ, (NULL),
+        ("Error while reading from a QUIC stream"));
+    }
+}
+
+
+//FIXME: This function is currently set up for test purpose. It will need to be modified.
+static void gst_quicsink_on_write (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx)
+{
+    gssize bytes_written;
+
+    lsquic_conn_t *conn = lsquic_stream_conn(stream);
+    GstQuicsink *quicsink = GST_QUICSINK (stream_ctx);
+
+    GST_DEBUG_OBJECT(quicsink, "MW: writing stream");
+
+    bytes_written = lsquic_stream_write(stream, g_strreverse(quicsink->stream_ctx.buffer), quicsink->stream_ctx.offset);
+    if (bytes_written > 0)
+    {
+        if (bytes_written == quicsink->stream_ctx.offset)
+        {
+            GST_DEBUG_OBJECT(quicsink, "MW: wrote full reply string to stream, closing stream");
+            lsquic_stream_close(stream);
+        }
+        else
+        {
+            GST_ELEMENT_ERROR (quicsink, RESOURCE, WRITE,
+              (NULL),
+              ("Couldn't write all of the test string"));
+        }
+    }
+    else
+    {
+        GST_DEBUG_OBJECT(quicsink, "stream_write() wrote zero bytes. This should not be possible and indicates a serious error. Aborting conn");
+        lsquic_conn_abort(conn);
+    }
+}
+
+static void gst_quicsink_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx)
+{
+  GstQuicsink *quicsink = GST_QUICSINK (stream_ctx);
+  GST_DEBUG_OBJECT(quicsink, "MW: stream closed, close connection");
+  lsquic_conn_close(lsquic_stream_conn(stream));
 }
 
 static void
@@ -231,7 +385,7 @@ gst_quicsink_init (GstQuicsink * quicsink)
   quicsink->engine = NULL;
   quicsink->connection = NULL;
   quicsink->ssl_ctx = NULL;
-
+  
   memset(&quicsink->stream_ctx, 0, sizeof(quicsink->stream_ctx));
 }
 
