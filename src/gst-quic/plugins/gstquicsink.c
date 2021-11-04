@@ -671,7 +671,36 @@ gst_quicsink_start (GstBaseSink * sink)
       return FALSE;
   }
   memcpy(&(quicsink->local_address), &server_addr, sizeof(server_addr));
-  
+
+  // Initialize engine callbacks
+  memset(&engine_api, 0, sizeof(engine_api));
+  engine_api.ea_packets_out     = gst_quic_send_packets;
+  engine_api.ea_packets_out_ctx = quicsink;
+  engine_api.ea_stream_if       = &quicsink_callbacks;
+  engine_api.ea_stream_if_ctx   = quicsink;
+  engine_api.ea_settings        = &engine_settings;
+  engine_api.ea_get_ssl_ctx     = gst_quicsink_get_ssl_ctx;
+
+  // Instantiate engine in server mode
+  quicsink->engine = lsquic_engine_new(QUIC_SERVER, &engine_api);
+  if (!quicsink->engine)
+  {
+      GST_ELEMENT_ERROR (quicsink, RESOURCE, OPEN_READ, (NULL),
+        ("Failed to create lsquic engine"));
+      return FALSE;
+  }
+
+  int diff = 0;
+
+  GST_DEBUG_OBJECT(quicsink, "Initialised engine, ready to accept connections");
+
+  //FIXME: This has been added for testing purposes and will be removed later.
+  while (TRUE) {
+    gst_quic_read_packets(GST_ELEMENT(quicsink), quicsink->socket, quicsink->engine, quicsink->local_address);
+    lsquic_engine_earliest_adv_tick(quicsink->engine, &diff);
+    g_usleep(diff);
+  }
+
   return TRUE;
 }
 
