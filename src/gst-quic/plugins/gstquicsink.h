@@ -52,6 +52,13 @@ G_BEGIN_DECLS
 typedef struct _GstQuicsink GstQuicsink;
 typedef struct _GstQuicsinkClass GstQuicsinkClass;
 
+//FIXME: ADDED to test server
+struct server_stream_ctx
+{
+    gsize   offset;           /* Number of bytes written to stream */
+    gchar   buffer[0x100];    /* Bytes read in from client */
+};
+
 struct _GstQuicsink
 {
   GstBaseSink parent;
@@ -77,6 +84,8 @@ struct _GstQuicsink
   lsquic_engine_t *engine;
   lsquic_conn_t *connection;
 
+  /* Test stream context*/
+  struct server_stream_ctx stream_ctx;
 };
 
 struct _GstQuicsinkClass
