@@ -56,6 +56,8 @@ struct _GstQuicsink
 {
   GstBaseSink parent;
 
+  gint socket;
+
   /* SSL context */
   SSL_CTX *ssl_ctx;
 
