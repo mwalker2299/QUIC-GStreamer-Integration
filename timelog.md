@@ -79,7 +79,7 @@
 
 * *3.0 hours* Continued work on QUIC source element.
 
-### 17 OCT
+### 17 OCT 2021
 
 * *7.0 hours* Continued work on QUIC source element. 
 * *1.0 hours* Looked into an issue where client-server handshake fails.
@@ -87,7 +87,7 @@
 
 ## Week 4 (11.5)
 
-### 21 OCT
+### 21 OCT 2021
 
 * *5.5 hours* Identified cause of handshake failure within client element. Added an issue to the github for lsquic, hoping that they have insight. Using an earlier version of BoringSSL resolves the issue.
 * *0.5 hours* Meeting with Colin
@@ -95,14 +95,14 @@
 * *2.75 hours* Now that the handshake succeeds, continued developing QUIC client element. 
 
 
-### 24 OCT
+### 24 OCT 2021
 
 * *2.5 hours* QUIC client element can now successfully connect to a server, receive data and pass this data as a buffer down the pipeline.
 
 
 ## Week 5 (16.25)
 
-### 28 OCT
+### 28 OCT 2021
 
 * *2.5 hours* investigated boringssl version issue to provide info on github issue I created
 * *1.0 hours* fixed bug causing a segfault in the client element.
@@ -111,12 +111,25 @@
 * *3.0 hours* Upgraded to a newer version of gstreamer. This simplifies the build process and allows use of a template for gstbasesink which will be used by server element.
 
 
-### 30 OCT
+### 30 OCT 2021
 
 * *0.5 hours* Created quic sink element from template and added it to the gstquic plugin
 * *3.5 hours* Began adding functionality to sink element. Also extracted logic common to client and server into its own file 
 
-### 31 OCT
+### 31 OCT 2021
 
 * *4.5 hours* Continued adding functionality to sink element. Focusing on setting up the lsquic engine to allow the server to accept incoming connections
 * *0.75 hours* Fixed build issue where the incorrect openssl header were included. (System headers were used but the headers defined by boringssl should have been used instead.)
+
+
+## Week 6 (12.5)
+
+### 4 NOV
+
+* *0.5 hours* Meeting with Colin
+* *0.25 hours* Added minutes and plan to appropriate meeting file
+* *7.75 hours* Added remaining functions neceesary for the quicserver element to communicate with a quic client.
+
+
+### 5 NOV 
+* *4.0 hours* Fixed issue with Linux VM after a crash. GUI was not starting which prevents testing gstreamer videosinks. After exausting all solutions found online, I had to reinstall ubuntu.
