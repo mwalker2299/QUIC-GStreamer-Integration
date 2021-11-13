@@ -90,3 +90,17 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# meson
+
+*meson-info/
+*meson-logs/
+*meson-private/
+compile_commands.json
+.ninja_deps
+.ninja_log
+build.ninja
+src/gst-quic/build/
+
+# vscode 
+.vscode/
