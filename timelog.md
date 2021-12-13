@@ -147,3 +147,20 @@
 * *1.00 hours* Fixed a bug where quicsrc would loop forever while trying to read a close streamed.
 * *9.00 hours* The VM was too slow to propely process and play video using gstreamer. So I moved to a dual boot instead. This failed the first time and took longer than expected. I managed to break the bootloader for windows in the process which took some time to debug and fix.
 
+
+## Week 8 (17.0)
+
+### 19 Nov 2021
+
+* *3.00 hours* Researched potential points of comprison for dissertation. Decided on RTP over semi-reliable quic vs RTP over UDP 
+* *3.00 hours* Looked into Gstreamers RTP framework and experimented with sending video over RTP via quic and UDP.
+* *2.00 hours* Added ability for quicsink to detect I-frames.
+* *0.25 hours* Meeting with Colin
+* *0.25 hours* Added minutes and plan to appropriate meeting file
+
+
+### 20 Nov 2021
+
+* *7.00* While testing that the quic elements could send video, I noticed an issue. playback would not start and the h264parser element was dropping all frames. This affected the existing udpsrc and sink elements as well so I initially believed the issue to be in my pipeline setup. However, I tracked the cause down to two bugs in gstquicsrc. These have now been fixed.
+* *1.50 hours* Added bufferlist support to quicsink. This will allow it to work with the RTP payloader which exists within gstreamer.
+
