@@ -254,6 +254,7 @@ static lsquic_conn_ctx_t *gst_quicsink_on_new_conn (void *stream_if_ctx, struct 
   GstQuicsink *quicsink = GST_QUICSINK (stream_if_ctx);
   GST_DEBUG_OBJECT(quicsink,"MW: Connection created");
   quicsink->connection_active = TRUE;
+  quicsink->connection = conn;
   return (void *) quicsink;
 }
 
@@ -284,37 +285,34 @@ static void gst_quicsink_on_conn_closed (struct lsquic_conn *conn)
     quicsink->connection_active = FALSE;
 }
 
-//FIXME: This function is currently set up for test purpose. It will need to be modified.
 static lsquic_stream_ctx_t *gst_quicsink_on_new_stream (void *stream_if_ctx, struct lsquic_stream *stream)
 {
     GstQuicsink *quicsink = GST_QUICSINK (stream_if_ctx);
     GST_DEBUG_OBJECT(quicsink, "MW: created new stream");
-    //FIXME: For now, as a test, we want to read a string, reverse it and send it back
-    lsquic_stream_wantread(stream, 1);
+    lsquic_stream_wantwrite(stream, 1);
     return (void *) quicsink;
 }
 
 
-//FIXME: This function is currently set up for test purpose. It will need to be modified.
-static size_t gst_quicsink_readf (void *ctx, const unsigned char *data, size_t len, int fin)
+static gsize gst_quicsink_readf (void *ctx, const unsigned char *data, size_t len, int fin)
 {
     struct lsquic_stream *stream = (struct lsquic_stream *) ctx;
     GstQuicsink *quicsink = GST_QUICSINK ((void *) lsquic_stream_get_ctx(stream));
 
-    if (len) 
-    {
-        quicsink->stream_ctx.offset = len;
-        memcpy(quicsink->stream_ctx.buffer, data, len);
-        GST_DEBUG_OBJECT(quicsink, "MW: Read %lu bytes from stream", len);
-        printf("Read %s", quicsink->stream_ctx.buffer);
-        fflush(stdout);
-    }
-    if (fin)
-    {
-        GST_DEBUG_OBJECT(quicsink, "MW: Read end of stream, for the purpose of this test we want to write the reverse back");
-        lsquic_stream_shutdown(stream, 0);
-        lsquic_stream_wantwrite(stream, 1);
-    }
+    // if (len) 
+    // {
+    //     quicsink->stream_ctx.offset = len;
+    //     memcpy(quicsink->stream_ctx.buffer, data, len);
+    //     GST_DEBUG_OBJECT(quicsink, "MW: Read %lu bytes from stream", len);
+    //     printf("Read %s", quicsink->stream_ctx.buffer);
+    //     fflush(stdout);
+    // }
+    // if (fin)
+    // {
+    //     GST_DEBUG_OBJECT(quicsink, "MW: Read end of stream, for the purpose of this test we want to write the reverse back");
+    //     lsquic_stream_shutdown(stream, 0);
+    //     lsquic_stream_wantwrite(stream, 1);
+    // }
     return len;
 }
 
@@ -324,6 +322,11 @@ static void gst_quicsink_on_read (struct lsquic_stream *stream, lsquic_stream_ct
     GstQuicsink *quicsink = GST_QUICSINK (stream_ctx);
     ssize_t bytes_read;
 
+    GST_ELEMENT_ERROR (quicsink, RESOURCE, READ, (NULL),
+        ("WE SHOULD NOT BE READING"));
+
+    raise(SIGSEGV);
+
     bytes_read = lsquic_stream_readf(stream, gst_quicsink_readf, stream);
     if (bytes_read < 0)
     {
@@ -332,35 +335,52 @@ static void gst_quicsink_on_read (struct lsquic_stream *stream, lsquic_stream_ct
     }
 }
 
+static gsize gst_quicsink_read_buffer (void *ctx, void *buf, size_t count)
+{
+    GstQuicsink *quicsink = GST_QUICSINK (ctx);
+    GstMapInfo map;
 
-//FIXME: This function is currently set up for test purpose. It will need to be modified.
+    gst_buffer_map (quicsink->stream_ctx.buffer, &map, GST_MAP_READ);
+
+    memcpy(buf, map.data+quicsink->stream_ctx.offset, count);
+    quicsink->stream_ctx.offset += count;
+    return count;
+}
+
+
+static gsize gst_quicsink_get_remaining_buffer_size (void *ctx)
+{
+    GstQuicsink *quicsink = GST_QUICSINK (ctx);
+    return quicsink->stream_ctx.buffer_size - quicsink->stream_ctx.offset;
+}
+
+
+/* 
+Write GstBuffer to stream
+*/
 static void gst_quicsink_on_write (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx)
 {
-    gssize bytes_written;
-
     lsquic_conn_t *conn = lsquic_stream_conn(stream);
     GstQuicsink *quicsink = GST_QUICSINK (stream_ctx);
+    struct lsquic_reader buffer_reader = {gst_quicsink_read_buffer, gst_quicsink_get_remaining_buffer_size, quicsink, };
+    const gsize buffer_size = quicsink->stream_ctx.buffer_size;
+    gssize bytes_written;
 
-    GST_DEBUG_OBJECT(quicsink, "MW: writing stream");
+    GST_DEBUG_OBJECT(quicsink, "MW: writing to stream, total buffer size = (%lu bytes)", buffer_size);
 
-    bytes_written = lsquic_stream_write(stream, g_strreverse(quicsink->stream_ctx.buffer), quicsink->stream_ctx.offset);
+    bytes_written = lsquic_stream_writef(stream, &buffer_reader);
     if (bytes_written > 0)
     {
-        if (bytes_written == quicsink->stream_ctx.offset)
-        {
-            GST_DEBUG_OBJECT(quicsink, "MW: wrote full reply string to stream, closing stream");
-            lsquic_stream_close(stream);
-        }
-        else
-        {
-            GST_ELEMENT_ERROR (quicsink, RESOURCE, WRITE,
-              (NULL),
-              ("Couldn't write all of the test string"));
-        }
+      GST_DEBUG_OBJECT(quicsink, "MW: wrote %ld bytes to stream", bytes_written);
+      if (quicsink->stream_ctx.offset == buffer_size) 
+      {
+          GST_DEBUG_OBJECT(quicsink, "MW: wrote full buffer to stream (%lu bytes), closing stream", buffer_size);
+          lsquic_stream_close(stream);
+      }
     }
-    else
+    else if (bytes_written < 0)
     {
-        GST_DEBUG_OBJECT(quicsink, "stream_write() wrote zero bytes. This should not be possible and indicates a serious error. Aborting conn");
+        GST_DEBUG_OBJECT(quicsink, "stream_write() failed to write any bytes. This should not be possible and indicates a serious error. Aborting conn");
         lsquic_conn_abort(conn);
     }
 }
@@ -368,8 +388,7 @@ static void gst_quicsink_on_write (struct lsquic_stream *stream, lsquic_stream_c
 static void gst_quicsink_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx)
 {
   GstQuicsink *quicsink = GST_QUICSINK (stream_ctx);
-  GST_DEBUG_OBJECT(quicsink, "MW: stream closed, close connection");
-  lsquic_conn_close(lsquic_stream_conn(stream));
+  GST_DEBUG_OBJECT(quicsink, "MW: stream closed");
 }
 
 static void
@@ -690,15 +709,10 @@ gst_quicsink_start (GstBaseSink * sink)
       return FALSE;
   }
 
-  int diff = 0;
-
   GST_DEBUG_OBJECT(quicsink, "Initialised engine, ready to accept connections");
 
-  //FIXME: This has been added for testing purposes and will be removed later.
-  while (TRUE) {
+  while (!quicsink->connection_active) {
     gst_quic_read_packets(GST_ELEMENT(quicsink), quicsink->socket, quicsink->engine, quicsink->local_address);
-    lsquic_engine_earliest_adv_tick(quicsink->engine, &diff);
-    g_usleep(diff);
   }
 
   return TRUE;
@@ -809,7 +823,28 @@ gst_quicsink_render (GstBaseSink * sink, GstBuffer * buffer)
 {
   GstQuicsink *quicsink = GST_QUICSINK (sink);
 
-  GST_DEBUG_OBJECT (quicsink, "render");
+  if (!quicsink->connection_active) 
+  {
+    GST_ELEMENT_ERROR (quicsink, RESOURCE, READ, (NULL),
+        ("There is no active connection to send data to"));
+    return GST_FLOW_ERROR;
+  } 
+
+  GST_DEBUG_OBJECT (quicsink, "render -- duration: %" GST_TIME_FORMAT ",  dts: %" GST_TIME_FORMAT ",  pts: %" GST_TIME_FORMAT, GST_TIME_ARGS(buffer->duration), GST_TIME_ARGS(buffer->dts), GST_TIME_ARGS(buffer->pts));
+  if (!(gst_buffer_get_flags(buffer) & GST_BUFFER_FLAG_DELTA_UNIT)) {
+    GST_DEBUG_OBJECT (quicsink, "GST_BUFFER_FLAG_DELTA_UNIT is not set, this frame is an I-frame");
+  } 
+
+  quicsink->stream_ctx.buffer = buffer;
+  quicsink->stream_ctx.offset = 0;
+  quicsink->stream_ctx.buffer_size = gst_buffer_get_size(quicsink->stream_ctx.buffer);
+
+  lsquic_conn_make_stream(quicsink->connection);
+
+  while (quicsink->stream_ctx.offset != quicsink->stream_ctx.buffer_size) 
+  {
+    gst_quic_read_packets(GST_ELEMENT(quicsink), quicsink->socket, quicsink->engine, quicsink->local_address);
+  }
 
   return GST_FLOW_OK;
 }
