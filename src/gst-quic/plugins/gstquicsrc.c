@@ -316,7 +316,6 @@ gst_quicsrc_on_new_conn (void *stream_if_ctx, struct lsquic_conn *conn)
 {
   GstQuicsrc *quicsrc = GST_QUICSRC (stream_if_ctx);
   GST_DEBUG_OBJECT(quicsrc,"MW: Connection created");
-  lsquic_conn_make_stream(conn);
   return (void *) quicsrc;
 }
 
