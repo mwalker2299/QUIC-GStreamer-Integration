@@ -133,3 +133,17 @@
 
 ### 5 NOV 
 * *4.0 hours* Fixed issue with Linux VM after a crash. GUI was not starting which prevents testing gstreamer videosinks. After exausting all solutions found online, I had to reinstall ubuntu.
+
+## Week 7 (22.0)
+
+### 11 NOV 2021
+
+* *10.00 hours* Added remaining Gstreamer functionality to quic sink. Data within GstBuffers received from upstream can now be written to a stream. The quicsrc then retrieves the data and sends it downstream in a new GstBuffer.
+
+### 12 Nov 2021
+
+* *1.00 hours* Fixed a bug where quicsink would not transmit the full buffer.
+* *1.00 hours* Fixed a bug where quicsink would wait forever.
+* *1.00 hours* Fixed a bug where quicsrc would loop forever while trying to read a close streamed.
+* *9.00 hours* The VM was too slow to propely process and play video using gstreamer. So I moved to a dual boot instead. This failed the first time and took longer than expected. I managed to break the bootloader for windows in the process which took some time to debug and fix.
+
