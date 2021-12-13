@@ -164,3 +164,12 @@
 * *7.00* While testing that the quic elements could send video, I noticed an issue. playback would not start and the h264parser element was dropping all frames. This affected the existing udpsrc and sink elements as well so I initially believed the issue to be in my pipeline setup. However, I tracked the cause down to two bugs in gstquicsrc. These have now been fixed.
 * *1.50 hours* Added bufferlist support to quicsink. This will allow it to work with the RTP payloader which exists within gstreamer.
 
+## Week 9 (0.5 hours)
+
+### 25 Nov 2021
+
+* *0.25 hours* Meeting with Colin
+* *0.25 hours* Added minutes and plan to appropriate meeting file
+
+No work was done during week 9, 10 and part of 11 as I was focused on coursework + exams and then fell ill.
+
