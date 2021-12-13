@@ -496,6 +496,8 @@ gst_quicsink_finalize (GObject * object)
   GST_DEBUG_OBJECT (quicsink, "finalize");
 
   /* clean up object here */
+  lsquic_engine_destroy(quicsink->engine);
+  lsquic_global_cleanup();
 
   G_OBJECT_CLASS (gst_quicsink_parent_class)->finalize (object);
 }
@@ -723,7 +725,11 @@ gst_quicsink_stop (GstBaseSink * sink)
 {
   GstQuicsink *quicsink = GST_QUICSINK (sink);
 
-  GST_DEBUG_OBJECT (quicsink, "stop");
+  GST_DEBUG_OBJECT (quicsink, "stop called, closing connection");
+  if (quicsink->connection) {
+    lsquic_conn_close(quicsink->connection);
+    lsquic_engine_process_conns(quicsink->engine);
+  }
 
   return TRUE;
 }
