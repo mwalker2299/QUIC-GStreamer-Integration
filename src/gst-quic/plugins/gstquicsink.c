@@ -568,18 +568,18 @@ gst_quicsink_start (GstBaseSink * sink)
   }
 
   /* Initialize logging */
-  FILE *s_log_fh = stderr;
+  // FILE *s_log_fh = stderr;
 
-  if (0 != lsquic_set_log_level("debug"))
-  {
-    GST_ELEMENT_ERROR (quicsink, LIBRARY, INIT,
-        (NULL),
-        ("Failed to initialise lsquic"));
-    return FALSE;
-  }
+  // if (0 != lsquic_set_log_level("debug"))
+  // {
+  //   GST_ELEMENT_ERROR (quicsink, LIBRARY, INIT,
+  //       (NULL),
+  //       ("Failed to initialise lsquic"));
+  //   return FALSE;
+  // }
 
-  setvbuf(s_log_fh, NULL, _IOLBF, 0);
-  lsquic_logger_init(&logger_if, s_log_fh, LLTS_HHMMSSUS);
+  // setvbuf(s_log_fh, NULL, _IOLBF, 0);
+  // lsquic_logger_init(&logger_if, s_log_fh, LLTS_HHMMSSUS);
 
   // Initialize engine settings to default values
   lsquic_engine_init_settings(&engine_settings, QUIC_SERVER);
