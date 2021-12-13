@@ -167,6 +167,8 @@ gst_quicsrc_init (GstQuicsrc * quicsrc)
   quicsrc->engine = NULL;
   quicsrc->connection = NULL;
 
+  quicsrc->stream_context_queue = NULL;
+
   /* configure basesrc to be a live source */
   gst_base_src_set_live (GST_BASE_SRC (quicsrc), TRUE);
   /* make basesrc output a segment in time */

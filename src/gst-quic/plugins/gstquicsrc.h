@@ -48,6 +48,13 @@ G_BEGIN_DECLS
 typedef struct _GstQuicsrc GstQuicsrc;
 typedef struct _GstQuicsrcClass GstQuicsrcClass;
 
+struct stream_ctx
+{
+    gsize   offset;           /* Number of bytes read from stream */
+    gchar* buffer;
+    gboolean ready;           /* set when stream has been read to completion */
+};
+
 struct _GstQuicsrc
 {
   GstPushSrc parent;
@@ -68,8 +75,8 @@ struct _GstQuicsrc
   lsquic_engine_t *engine;
   lsquic_conn_t *connection;
 
-  gsize offset;
-  gchar* buffer;
+  /* hold stream contexts */
+  GList* stream_context_queue;
 
 };
 
