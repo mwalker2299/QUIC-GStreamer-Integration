@@ -59,7 +59,8 @@ enum
 {
   PROP_0,
   PROP_HOST,
-  PROP_PORT
+  PROP_PORT,
+  PROP_CAPS
 };
 
 
@@ -139,6 +140,10 @@ gst_quicsrc_class_init (GstQuicsrcClass * klass)
       g_param_spec_int ("port", "Port", "The port used by the quic server", 0,
           G_MAXUINT16, QUIC_DEFAULT_PORT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+  g_object_class_install_property (gobject_class, PROP_CAPS,
+      g_param_spec_boxed ("caps", "Caps",
+          "The caps of the source pad", GST_TYPE_CAPS,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_quicsrc_get_caps);
 
@@ -186,6 +191,28 @@ gst_quicsrc_set_property (GObject * object, guint property_id,
     case PROP_PORT:
       quicsrc->port = g_value_get_int (value);
       break;
+    case PROP_CAPS:
+    {
+      const GstCaps *new_caps_val = gst_value_get_caps (value);
+      GstCaps *new_caps;
+      GstCaps *old_caps;
+
+      if (new_caps_val == NULL) {
+        new_caps = gst_caps_new_any ();
+      } else {
+        new_caps = gst_caps_copy (new_caps_val);
+      }
+
+      GST_OBJECT_LOCK (quicsrc);
+      old_caps = quicsrc->caps;
+      quicsrc->caps = new_caps;
+      GST_OBJECT_UNLOCK (quicsrc);
+      if (old_caps)
+        gst_caps_unref (old_caps);
+
+      gst_pad_mark_reconfigure (GST_BASE_SRC_PAD (quicsrc));
+      break;
+    }
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -205,6 +232,11 @@ gst_quicsrc_get_property (GObject * object, guint property_id,
       break;
     case PROP_PORT:
       g_value_set_int (value, quicsrc->port);
+      break;
+    case PROP_CAPS:
+      GST_OBJECT_LOCK (quicsrc);
+      gst_value_set_caps (value, quicsrc->caps);
+      GST_OBJECT_UNLOCK (quicsrc);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -247,15 +279,29 @@ static GstCaps *
 gst_quicsrc_get_caps (GstBaseSrc * src, GstCaps * filter)
 {
   GstQuicsrc *quicsrc;
-  GstCaps *caps = NULL;
+  GstCaps *caps, *result;
 
   quicsrc = GST_QUICSRC (src);
 
-  caps = (filter ? gst_caps_ref (filter) : gst_caps_new_any ());
+  GST_OBJECT_LOCK (src);
+  if ((caps = quicsrc->caps))
+    gst_caps_ref (caps);
+  GST_OBJECT_UNLOCK (src);
+
+  if (caps) {
+    if (filter) {
+      result = gst_caps_intersect_full (filter, caps, GST_CAPS_INTERSECT_FIRST);
+      gst_caps_unref (caps);
+    } else {
+      result = caps;
+    }
+  } else {
+    result = (filter) ? gst_caps_ref (filter) : gst_caps_new_any ();
+  }
 
   GST_DEBUG_OBJECT (quicsrc, "returning caps %" GST_PTR_FORMAT, caps);
-  g_assert (GST_IS_CAPS (caps));
-  return caps;
+  g_assert (GST_IS_CAPS (result));
+  return result;
 }
 
 static lsquic_conn_ctx_t *

@@ -54,6 +54,8 @@ struct _GstQuicsrc
 
   gint socket;
 
+  GstCaps *caps;
+
   /* QUIC server address info */
   guint16 port;
   gchar *host;
