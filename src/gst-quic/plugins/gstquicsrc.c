@@ -258,7 +258,8 @@ gst_quicsrc_dispose (GObject * object)
 
   GST_DEBUG_OBJECT (quicsrc, "dispose");
 
-  /* clean up as possible.  may be called multiple times */
+  lsquic_engine_destroy(quicsrc->engine);
+  lsquic_global_cleanup();
 
   G_OBJECT_CLASS (gst_quicsrc_parent_class)->dispose (object);
 }
@@ -587,7 +588,11 @@ gst_quicsrc_stop (GstBaseSrc * src)
 {
   GstQuicsrc *quicsrc = GST_QUICSRC (src);
 
-  GST_DEBUG_OBJECT (quicsrc, "stop");
+  GST_DEBUG_OBJECT (quicsrc, "stop called, closing connection");
+  if (quicsrc->connection && quicsrc->connection_active) 
+  {
+    lsquic_conn_close(quicsrc->connection);
+  }
 
   return TRUE;
 }
