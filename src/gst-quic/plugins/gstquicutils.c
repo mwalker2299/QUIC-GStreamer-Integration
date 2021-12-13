@@ -178,7 +178,7 @@ void gst_quic_read_packets (GstElement * quic_element, gint socket, lsquic_engin
     gssize nread;
     int ecn;
     struct sockaddr_storage peer_sas, local_sas;
-    unsigned char buf[0x1000];
+    unsigned char buf[0xffff];
     struct iovec vec[1] = {{ buf, sizeof(buf) }};
     unsigned char ctl_buf[CTL_SZ];
 
