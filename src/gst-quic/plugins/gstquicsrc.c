@@ -314,7 +314,6 @@ gst_quicsrc_on_new_conn (void *stream_if_ctx, struct lsquic_conn *conn)
 {
   GstQuicsrc *quicsrc = GST_QUICSRC (stream_if_ctx);
   GST_DEBUG_OBJECT(quicsrc,"MW: Connection created");
-  quicsrc->connection_active = TRUE;
   lsquic_conn_make_stream(conn);
   return (void *) quicsrc;
 }
@@ -329,6 +328,7 @@ gst_quicsrc_on_hsk_done(lsquic_conn_t *conn, enum lsquic_hsk_status status)
     case LSQ_HSK_OK:
     case LSQ_HSK_RESUMED_OK:
         GST_DEBUG_OBJECT(quicsrc, "MW: Handshake completed successfully");
+        quicsrc->connection_active = TRUE;
         break;
     default:
         GST_ELEMENT_ERROR (quicsrc, RESOURCE, OPEN_READ, (NULL),
