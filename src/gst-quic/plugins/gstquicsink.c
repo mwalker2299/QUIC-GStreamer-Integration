@@ -230,7 +230,7 @@ gst_quicsink_load_cert_and_key (GstQuicsink * quicsink)
         SSL_CTX_free(quicsink->ssl_ctx);
         GST_ELEMENT_ERROR (quicsink, LIBRARY, FAILED,
           (NULL),
-          ("SSL_CTX_use_certificate_chain_file failed, is the path to the cert file correct?"));
+          ("SSL_CTX_use_certificate_chain_file failed, is the path to the cert file correct? path = %s", quicsink->cert_file));
     }
     if (!SSL_CTX_use_PrivateKey_file(quicsink->ssl_ctx, quicsink->key_file,
                                                             SSL_FILETYPE_PEM))
@@ -238,7 +238,7 @@ gst_quicsink_load_cert_and_key (GstQuicsink * quicsink)
         SSL_CTX_free(quicsink->ssl_ctx);
         GST_ELEMENT_ERROR (quicsink, LIBRARY, FAILED,
           (NULL),
-          ("SSL_CTX_use_PrivateKey_file failed, is the path to the key file correct?"));
+          ("SSL_CTX_use_PrivateKey_file failed, is the path to the key file correct? path = %s", quicsink->key_file));
     }
     static_ssl_ctx = quicsink->ssl_ctx;
 }
