@@ -167,8 +167,13 @@ gst_quicsrc_init (GstQuicsrc * quicsrc)
   quicsrc->engine = NULL;
   quicsrc->connection = NULL;
 
-  quicsrc->offset = 0;
-  quicsrc->buffer = malloc(100000);
+  /* configure basesrc to be a live source */
+  gst_base_src_set_live (GST_BASE_SRC (quicsrc), TRUE);
+  /* make basesrc output a segment in time */
+  gst_base_src_set_format (GST_BASE_SRC (quicsrc), GST_FORMAT_TIME);
+  /* make basesrc set timestamps on outgoing buffers based on the running_time
+   * when they were captured */
+  gst_base_src_set_do_timestamp (GST_BASE_SRC (quicsrc), TRUE);
 }
 
 static void
