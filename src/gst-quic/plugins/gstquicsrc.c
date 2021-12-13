@@ -418,30 +418,23 @@ gst_quicsrc_on_write (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsquic_
     {
         if (bytes_written == sizeof(test_string))
         {
-            GST_DEBUG_OBJECT(quicsrc, "MW: wrote full test string to stream");
+            GST_DEBUG("MW: wrote full test string to stream");
             lsquic_stream_shutdown(stream, 1);  /* This flushes as well */
             lsquic_stream_wantread(stream, 1);
-        }
-        else
-        {
-            GST_ELEMENT_ERROR (quicsrc, RESOURCE, WRITE,
-              (NULL),
-              ("Couldn't write all of the test string"));
         }
     }
     else
     {
-        GST_DEBUG_OBJECT(quicsrc, "stream_write() wrote zero bytes. This should not be possible and indicates a serious error. Aborting conn");
+        GST_DEBUG("stream_write() wrote zero bytes. This should not be possible and indicates a serious error. Aborting conn");
         lsquic_conn_abort(conn);
     }
 }
 
 static void
-gst_quicsrc_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx)
+gst_quicsrc_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsquic_stream_ctx)
 {
-    GstQuicsrc *quicsrc = GST_QUICSRC (stream_ctx);
-    GST_DEBUG_OBJECT(quicsrc, "MW: stream closed");
-    lsquic_conn_close(lsquic_stream_conn(stream));
+    struct stream_ctx *stream_ctx = (struct stream_ctx*) (stream_ctx);
+    GST_DEBUG("stream closed");
 }
 
 /* Open a connection with the QUIC server */
