@@ -859,9 +859,29 @@ gst_quicsink_render (GstBaseSink * sink, GstBuffer * buffer)
 static GstFlowReturn
 gst_quicsink_render_list (GstBaseSink * sink, GstBufferList * buffer_list)
 {
+  GstFlowReturn flow_return;
+  guint i, num_buffers;
+
   GstQuicsink *quicsink = GST_QUICSINK (sink);
 
   GST_DEBUG_OBJECT (quicsink, "render_list");
+
+  num_buffers = gst_buffer_list_length (buffer_list);
+  if (num_buffers == 0) {
+    GST_DEBUG_OBJECT (quicsink, "Empty buffer list provided, returning immediately");
+    return GST_FLOW_OK;
+  }
+    
+  for (i = 0; i < num_buffers; i++) {
+
+    flow_return = gst_quicsink_render (sink, gst_buffer_list_get (buffer_list, i));
+
+    if (flow_return != GST_FLOW_OK) {
+      GST_WARNING_OBJECT(quicsink, "flow_return was not GST_FLOW_OK, returning after sending %u/%u buffers", i+1, num_buffers);
+      return flow_return;
+    }
+
+  }
 
   return GST_FLOW_OK;
 }
