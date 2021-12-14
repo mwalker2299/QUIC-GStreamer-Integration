@@ -173,3 +173,17 @@
 
 No work was done during week 9, 10 and part of 11 as I was focused on coursework + exams and then fell ill.
 
+## Week 11 (12.75)
+
+### 8th Dec 2021
+
+* *4.00 hours* Looked into bug which was causing distortion on video transported via quic elements. It looks like an I frame is being dropped due to an rtp error.
+
+### 9th Dec 2021 
+
+* *0.50 hours* Meeting with Colin
+* *0.25 hours* Added minutes and plan to appropriate meeting file
+
+### 11th DEC 2021
+
+* *8.00 hours* After a lot of debugging, Identified source of video issues. Rarely, the quic src element was having an issue handling parallel streams. This lead to buffer corruption, causing the rtp depayloader to drop the buffers. As a result the first I-frame could not be decoded. Added some changes to the way quic src operates to mend this.
