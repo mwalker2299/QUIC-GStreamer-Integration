@@ -26,7 +26,7 @@ For example, neighbours using traditional broadcast services may react to events
 IPTV users have a chance to see them, which could spoil the viewing experience. 
 \\\\
 Alternatively, UDP can be used as a transport protocol to ensure low-latency playback. 
-However, as UDP is unreliable and has no form of error correction, and as such playback
+However, UDP is unreliable and has no form of error correction, and as such playback
 quality may suffer on lossy connections.
 \\\\
 QUIC is a new transport layer network protocol recently standardised by the IETF which 
@@ -37,7 +37,7 @@ may be able to reduce latency while maintaining playback quality.
 
 This project aims to determine how fully and partially reliable QUIC implementations compare to UDP when used for video streaming.
 Both latency and the quality of playback of each QUIC implementation and UDP will be compared. The final results will show whether or not 
-QUIC can perform more reliably then UDP without impacting the latency of the stream. To accomplish this, QUIC elements will be created within the Gstreamer framework,
+QUIC can perform more reliably than UDP without impacting the latency of the stream. To accomplish this, QUIC elements will be created within the Gstreamer framework,
 allowing the project to take advantages of built-in Gstreamer features such as frame parsing and time-stamping. The evaluation will be performed
 by using Mininet to simulate a network with one or more client-server pairs.
 
@@ -48,11 +48,11 @@ by using Mininet to simulate a network with one or more client-server pairs.
 \item Background research conducted on QUIC transport protocol, streaming techniques and potential QUIC libraries.
 \item Background research conducted on Gstreamer. Familiarised myself with other network elements.
 \item QUIC server and sink Gstreamer elements have been created. Currently they are capable of transporting
-all buffers on a single stream or creating a stream for each buffer. Initial support for unreliable datagrams have been added as well. These elements required a significant amount of time to develop and test.
+all buffers on a single stream or creating a stream for each buffer. Initial support for unreliable datagrams has been added as well. These elements required a significant amount of time to develop and test.
 \item Gstreamer pipeline descriptions which utilise the QUIC server and client have been created. Similar pipelines descriptions which utilise existing Gstreamer UDP elements have also been written.
 \item Meson build files have been created to allow Gstreamer QUIC elements to be built and installed in a single command.
 \item Ubuntu was installed onto my personal PC to allow Gstreamer elements to be tested.
-\item Initial work has began on Mininet testing framework. So far this includes installiation, familiarisation with Mininet and its python API, and familiarisation with tshark.
+\item Initial work has begun on the Mininet testing framework. So far this includes installiation, familiarisation with Mininet and its Python API, and familiarisation with tshark.
 \end{itemize}
 
 \subsection{Problems and risks}\label{problems-and-risks}
@@ -72,9 +72,9 @@ too slow for Gstreamer to run effectively. The VM was then replaced with a dual 
 
 \begin{itemize}
 \item I have no experience with Mininet. \textbf{Mitigation}: I have begun reading through Mininet's API documentation and their example code and will continue to do so over the break. If I am struggling, Colin has offered to put me in touch with a PHD student who has a solid understanding of Mininet.
-\item In my initial experiments I have struggled to get packet capture via tshark to work in conjunction with Mininet \textbf{Mitigation}: I know that this is possible and will perform further research and experiments to determine how to accomplish this. I can ask on the Mininet forums if I continue to have problems.
+\item In my initial experiments I have struggled to get packet capture via tshark to work in conjunction with Mininet. \textbf{Mitigation}: I know that this is possible and will perform further research and experiments to determine how to accomplish this. I can ask on the Mininet forums if I continue to have problems.
 \item The current Gstreamer QUIC elements have some multi-threading issues. This causes problems such as 
-the pipeline not closing correctly when the QUIC connection is closed, however, its not clear if there are 
+the pipeline not closing correctly when the QUIC connection is closed. However, its not clear if there are 
 any performance impacts. \textbf{Mitigation}: The elements will need to be reworked slightly to mend this.
 \item I have a general idea of how to evaluate the various QUIC element versions and the UDP elements but I am not fully sure of which metrics I will need to analyse. \textbf{Mitigation}: Perform research into which metrics will be appropriate for evaluation and determine the best way to retrieve them.
 \end{itemize}
@@ -102,11 +102,11 @@ any performance impacts. \textbf{Mitigation}: The elements will need to be rewor
       Fully functioning test framework and results from a dry run.
     \item
       Weeks 3-4: 
-      Add support for unreliable datagram extension to QUIC Gstreamer elements. Next create a Gstreamer element pair which can send I-frames reliably and all other frames unreliably.\textbf{Deliverable:} QUIC Gstreamer element pair
+      Add support for unreliable datagram extension to QUIC Gstreamer elements. Next, create a Gstreamer element pair which can send I-frames reliably and all other frames unreliably. \textbf{Deliverable:} QUIC Gstreamer element pair
       which can transport I-frames reliably and all other frames unreliably.
     \item
       Weeks 5-6: Make modifications to QUIC Gstreamer elements to fix multi-threading issues described in the risks section. Also clean up code to improve readability and maintainability.
-      \textbf{Deliverable:} Polished QUIC Gstreamer which are ready for evaluation.
+      \textbf{Deliverable:} Polished QUIC Gstreamer elements which are ready for evaluation.
     \item
       Weeks 7-8: Perform evaluation and analyse results.
       \textbf{Deliverable:} Raw data from evaluation and results of analysis of this data.
