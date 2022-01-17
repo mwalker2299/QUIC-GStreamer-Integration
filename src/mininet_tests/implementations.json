@@ -1,0 +1,14 @@
+{
+  "implementations": {
+    "UDP": {
+      "name": "UDP", 
+      "server": "gst-launch-1.0 -v filesrc location=\"/home/matt/Documents/zoom_recording.mp4\" ! qtdemux name=demux  demux.video_0  ! rtph264pay ! udpsink host={addr} port=5000", 
+      "client": "gst-launch-1.0 udpsrc address={addr} port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96\" ! rtph264depay ! h264parse ! queue  ! decodebin ! videoconvert !  fakesink -v",
+      "logging": "\"*udp*:6,*rtp*:6,*:3\""},
+    "QUIC_FPS": {
+      "name": "QUIC_FPS", 
+      "server": "gst-launch-1.0 -v filesrc location=\"/home/matt/Documents/zoom_recording.mp4\" ! qtdemux name=demux  demux.video_0  ! rtph264pay ! quicsink host={addr} port=5000 log={lsquic_log}", 
+      "client": "gst-launch-1.0 quicsrc host={addr} port=5000 log={lsquic_log} caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96\" ! rtph264depay ! queue ! h264parse ! decodebin ! videoconvert !  fakesink -v",
+      "logging": "\"*quic*:6,*rtp*:6,*:3\""}
+  }
+}
