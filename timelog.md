@@ -187,3 +187,43 @@ No work was done during week 9, 10 and part of 11 as I was focused on coursework
 ### 11th DEC 2021
 
 * *8.00 hours* After a lot of debugging, Identified source of video issues. Rarely, the quic src element was having an issue handling parallel streams. This lead to buffer corruption, causing the rtp depayloader to drop the buffers. As a result the first I-frame could not be decoded. Added some changes to the way quic src operates to mend this.
+
+## Week 12 (26.75)
+
+### 13th DEC 2021
+
+* *4.00 hours* Spent some time cleaning up commits and removing unnecesarry changes to code. A lot of changes were committed together then moving to the dual boot, this work separated the commits to make it clear what changed.
+
+
+### 14th Dec 2021
+
+* *6.00 hours* set up mininet, worked through walkthrough and began reading example code.
+
+
+### 15th Dec 2021
+* *4.00 hours* Performed further background research on UDP, RTP, TCP and IPTV to ensure I fully understood the purpose of the project before writing the status report.
+* *4.00 hours* Wrote and submitted status report
+
+### 16th Dec 2021
+
+* *8.00 hours* Read through mininet's Python API documentation and guide. Read through more mininet python script examples. Performed further experiments with CLI. Created some basic mininet scripts using the python API.
+* *0.50 hours* Meeting with Colin
+* *0.25 hours* Added minutes and plan to appropriate meeting file
+
+
+## Winter Break
+
+* *5.00 hours* Learned how to use threads within python for use within mininet scripts. also brushed up on modules, the main method, handling cmdline arguments and manipulating json files.
+* *4.00 hours* Planned out mininet test framework in more detail and created pseudocode for the framework
+* *1.00 hours* Created config files providing server and client gstreamer commands for each impl as well as parameter values for testing.
+* *12.00 hours* Created all necessary mininet framework scripts and added skeleton for each based on pseudocode. Completed code for the test_runner.py and the network.py scripts. Also tested and debugged a few issues with results creation. Next, I began work on the test_loop.py script. All that remains is finish work on the test_loop.py script and add result analysis capabilities. (This work is slow going at first due to being rusty with python and inexperienced with mininet, but getting faster as work continues.)
+* *10.00 hours* Completed work on test_loop.py script, added tcpdump support and added the ability to set lsquic log destinations to gstquic cmdline options. Once this was done, the framework was tested to confirm that is produced reasonable results. This work involved some unexpected obstacles such as partitioning more space for linux so that the test results didn't use up all availiable space as well as identifying the best way to substitute the correct ip address into the gst-launch commands which start the pipelines. Another obstacle was that the client pipelines do not shut themselves down when transmission completes, so the threads were reworked such that the client thread will run its process in the background and kill it when the server thread completes.
+* *6.00 hours* After the initial tests of the framework, I ran a longer test using a set of possible delay and loss parameters that I felt were reasonable. The iterations were increased to 10. This worked well until it stalled on one of the final QUIC test runs. I was initially unable to reproduce this error but eventually found that it occurs rarely on QUIC runs with a high loss percentage. Unfortunately, the mininet api does not return the output of commands which don't complete, making it difficult to idnetify the cause. I have been trying to reproduce the error using the mininet cli as this should allow the output to be observed.
+
+
+## Semester 2
+
+
+
+
+
