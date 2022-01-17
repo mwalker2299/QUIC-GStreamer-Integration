@@ -73,6 +73,9 @@ struct _GstQuicsink
   gchar *cert_file;
   gchar *key_file;
 
+  /* LSQUIC logging path */
+  gchar *log_file;
+
   /* QUIC server address info */
   guint16 port;
   gchar *host;

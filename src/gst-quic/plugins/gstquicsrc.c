@@ -41,6 +41,7 @@
 #define QUIC_CLIENT 0
 #define QUIC_DEFAULT_PORT 12345
 #define QUIC_DEFAULT_HOST "127.0.0.1"
+#define QUIC_DEFAULT_LOG_PATH "/home/matt/Documents/lsquic-client-log.txt"
 
 GST_DEBUG_CATEGORY_STATIC (gst_quicsrc_debug_category);
 #define GST_CAT_DEFAULT gst_quicsrc_debug_category
@@ -59,6 +60,7 @@ enum
 {
   PROP_0,
   PROP_HOST,
+  PROP_LOG,
   PROP_PORT,
   PROP_CAPS
 };
@@ -136,6 +138,10 @@ gst_quicsrc_class_init (GstQuicsrcClass * klass)
       g_param_spec_string ("host", "Host",
           "The server IP address to connect to", QUIC_DEFAULT_HOST,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+  g_object_class_install_property (gobject_class, PROP_LOG,
+      g_param_spec_string ("log", "Log",
+          "The path to the lsquic log output file", QUIC_DEFAULT_LOG_PATH,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_PORT,
       g_param_spec_int ("port", "Port", "The port used by the quic server", 0,
           G_MAXUINT16, QUIC_DEFAULT_PORT,
@@ -162,6 +168,7 @@ gst_quicsrc_init (GstQuicsrc * quicsrc)
 {
   quicsrc->port = QUIC_DEFAULT_PORT;
   quicsrc->host = g_strdup (QUIC_DEFAULT_HOST);
+  quicsrc->log_file = g_strdup(QUIC_DEFAULT_LOG_PATH);
   quicsrc->socket = -1;
   quicsrc->connection_active = FALSE;
   quicsrc->engine = NULL;
@@ -195,6 +202,15 @@ gst_quicsrc_set_property (GObject * object, guint property_id,
       g_free (quicsrc->host);
       quicsrc->host = g_strdup (g_value_get_string (value));
       break;
+    case PROP_LOG:
+      if (!g_value_get_string (value)) {
+        g_warning ("log file path property cannot be NULL");
+        break;
+      }
+      g_free (quicsrc->log_file);
+      quicsrc->log_file = g_strdup (g_value_get_string (value));
+      break;
+    //FIXME: Should we protect against this being null?
     case PROP_PORT:
       quicsrc->port = g_value_get_int (value);
       break;
@@ -236,6 +252,9 @@ gst_quicsrc_get_property (GObject * object, guint property_id,
   switch (property_id) {
     case PROP_HOST:
       g_value_set_string (value, quicsrc->host);
+      break;
+    case PROP_LOG:
+      g_value_set_string (value, quicsrc->log_file);
       break;
     case PROP_PORT:
       g_value_set_int (value, quicsrc->port);
@@ -447,8 +466,6 @@ gst_quicsrc_start (GstBaseSrc * src)
   struct lsquic_engine_settings engine_settings;
   server_addr_u server_addr;
 
-  FILE *s_log_fh = stderr;
-
   GstQuicsrc *quicsrc = GST_QUICSRC (src);
 
   GST_DEBUG_OBJECT (quicsrc, "start");
@@ -461,17 +478,22 @@ gst_quicsrc_start (GstBaseSrc * src)
     return FALSE;
   }
 
-  // /* Initialize logging */
-  // if (0 != lsquic_set_log_level("debug"))
-  // {
-  //   GST_ELEMENT_ERROR (quicsrc, LIBRARY, INIT,
-  //       (NULL),
-  //       ("Failed to initialise lsquic"));
-  //   return FALSE;
-  // }
+  printf("Host is: %s, port is: %d, log is: %s", quicsrc->host, quicsrc->port, quicsrc->log_file);
+  fflush(stdout);
 
-  // setvbuf(s_log_fh, NULL, _IOLBF, 0);
-  // lsquic_logger_init(&logger_if, s_log_fh, LLTS_HHMMSSUS);
+  /* Initialize logging */
+  FILE *s_log_fh = fopen(quicsrc->log_file, "wb");
+
+  if (0 != lsquic_set_log_level("debug"))
+  {
+    GST_ELEMENT_ERROR (quicsrc, LIBRARY, INIT,
+        (NULL),
+        ("Failed to initialise lsquic"));
+    return FALSE;
+  }
+
+  setvbuf(s_log_fh, NULL, _IOLBF, 0);
+  lsquic_logger_init(&logger_if, s_log_fh, LLTS_HHMMSSUS);
 
   // Initialize engine settings to default values
   lsquic_engine_init_settings(&engine_settings, QUIC_CLIENT);

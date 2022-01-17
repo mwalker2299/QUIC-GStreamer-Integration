@@ -45,6 +45,7 @@
 #define QUIC_DEFAULT_HOST "127.0.0.1"
 #define QUIC_DEFAULT_CERTIFICATE_PATH "/home/matt/Documents/lsquic-tutorial/mycert-cert.pem"
 #define QUIC_DEFAULT_KEY_PATH "/home/matt/Documents/lsquic-tutorial/mycert-key.pem"
+#define QUIC_DEFAULT_LOG_PATH "/home/matt/Documents/lsquic-server-log.txt"
 
 /* We are interested in the original destination address of received packets.
   The IP_RECVORIGDSTADDR flag can be set on sockets to allow this. However,
@@ -127,6 +128,7 @@ enum
   PROP_HOST,
   PROP_PORT,
   PROP_CERT,
+  PROP_LOG,
   PROP_KEY
 };
 
@@ -175,6 +177,10 @@ gst_quicsink_class_init (GstQuicsinkClass * klass)
   g_object_class_install_property (gobject_class, PROP_KEY,
       g_param_spec_string ("key", "Key",
           "The path to the SSL private key file", QUIC_DEFAULT_KEY_PATH,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+  g_object_class_install_property (gobject_class, PROP_LOG,
+      g_param_spec_string ("log", "Log",
+          "The path to the lsquic log output file", QUIC_DEFAULT_LOG_PATH,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_PORT,
       g_param_spec_int ("port", "Port", "The port used by the quic server", 0,
@@ -398,6 +404,7 @@ gst_quicsink_init (GstQuicsink * quicsink)
   quicsink->host = g_strdup (QUIC_DEFAULT_HOST);
   quicsink->cert_file = g_strdup (QUIC_DEFAULT_CERTIFICATE_PATH);
   quicsink->key_file = g_strdup (QUIC_DEFAULT_KEY_PATH);
+  quicsink->log_file = g_strdup (QUIC_DEFAULT_LOG_PATH);
 
   quicsink->socket = -1;
   quicsink->connection_active = FALSE;
@@ -436,6 +443,14 @@ gst_quicsink_set_property (GObject * object, guint property_id,
       g_free (quicsink->cert_file);
       quicsink->cert_file = g_strdup (g_value_get_string (value));
       break;
+    case PROP_LOG:
+      if (!g_value_get_string (value)) {
+        g_warning ("Log path property cannot be NULL");
+        break;
+      }
+      g_free (quicsink->log_file);
+      quicsink->log_file = g_strdup (g_value_get_string (value));
+      break;
     case PROP_KEY:
       if (!g_value_get_string (value)) {
         g_warning ("SSL key path property cannot be NULL");
@@ -466,6 +481,9 @@ gst_quicsink_get_property (GObject * object, guint property_id,
       break;
     case PROP_CERT:
       g_value_set_string (value, quicsink->cert_file);
+      break;
+    case PROP_LOG:
+      g_value_set_string (value, quicsink->log_file);
       break;
     case PROP_KEY:
       g_value_set_string (value, quicsink->key_file);
@@ -588,19 +606,22 @@ gst_quicsink_start (GstBaseSink * sink)
     return FALSE;
   }
 
+  printf("Host is: %s, port is: %d, log is: %s", quicsink->host, quicsink->port, quicsink->log_file);
+  fflush(stdout);
+
   /* Initialize logging */
-  // FILE *s_log_fh = stderr;
+  FILE *s_log_fh = fopen(quicsink->log_file, "wb");
 
-  // if (0 != lsquic_set_log_level("debug"))
-  // {
-  //   GST_ELEMENT_ERROR (quicsink, LIBRARY, INIT,
-  //       (NULL),
-  //       ("Failed to initialise lsquic"));
-  //   return FALSE;
-  // }
+  if (0 != lsquic_set_log_level("debug"))
+  {
+    GST_ELEMENT_ERROR (quicsink, LIBRARY, INIT,
+        (NULL),
+        ("Failed to initialise lsquic"));
+    return FALSE;
+  }
 
-  // setvbuf(s_log_fh, NULL, _IOLBF, 0);
-  // lsquic_logger_init(&logger_if, s_log_fh, LLTS_HHMMSSUS);
+  setvbuf(s_log_fh, NULL, _IOLBF, 0);
+  lsquic_logger_init(&logger_if, s_log_fh, LLTS_HHMMSSUS);
 
   // Initialize engine settings to default values
   lsquic_engine_init_settings(&engine_settings, QUIC_SERVER);

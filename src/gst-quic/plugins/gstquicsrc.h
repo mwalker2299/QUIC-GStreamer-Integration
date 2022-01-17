@@ -67,6 +67,9 @@ struct _GstQuicsrc
   guint16 port;
   gchar *host;
 
+  /* Path to LSQUIC log file */
+  gchar *log_file;
+
   /* Local address storage */
   struct sockaddr_storage local_address;
 
