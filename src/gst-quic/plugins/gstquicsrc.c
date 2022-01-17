@@ -277,7 +277,9 @@ gst_quicsrc_dispose (GObject * object)
 
   GST_DEBUG_OBJECT (quicsrc, "dispose");
 
-  lsquic_engine_destroy(quicsrc->engine);
+  if (quicsrc->engine) {
+    lsquic_engine_destroy(quicsrc->engine);
+  }
   lsquic_global_cleanup();
 
   G_OBJECT_CLASS (gst_quicsrc_parent_class)->dispose (object);

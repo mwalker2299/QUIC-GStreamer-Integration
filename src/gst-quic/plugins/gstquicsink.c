@@ -514,7 +514,9 @@ gst_quicsink_finalize (GObject * object)
   GST_DEBUG_OBJECT (quicsink, "finalize");
 
   /* clean up object here */
-  lsquic_engine_destroy(quicsink->engine);
+  if (quicsink->engine) {
+    lsquic_engine_destroy(quicsink->engine);
+  }
   lsquic_global_cleanup();
 
   G_OBJECT_CLASS (gst_quicsink_parent_class)->finalize (object);
