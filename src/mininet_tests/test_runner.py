@@ -82,6 +82,7 @@ def main():
       stream_server_command = implementation['stream_server']
       stream_client_command = implementation['stream_client']
       ct_command            = implementation['ct_client']
+      run_time              = implementation['run_time']
       protocol_name         = implementation['name']
       log_level             = implementation['logging']
       implementation_results_path = os.path.join(results_path, protocol_name)
@@ -133,7 +134,8 @@ def main():
                     iteration_descriptor = "Iteration"+str(iteration)
                     log_path = create_directory(cross_traffic_results_path, iteration_descriptor)
 
-                    test_loop.run_test(test_params, stream_server_command, stream_client_command, ct_command, protocol_name, log_path, log_level)
+                    # Run test (We set timeout to our streams runtime + 5 seconds to account for possibility of loss causing increased run_time)
+                    test_loop.run_test(test_params, stream_server_command, stream_client_command, ct_command, int(run_time)+5, protocol_name, log_path, log_level)
             
 
     # call analyser to analyse raw results

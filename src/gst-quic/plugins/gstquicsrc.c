@@ -471,6 +471,7 @@ gst_quicsrc_start (GstBaseSrc * src)
   GstQuicsrc *quicsrc = GST_QUICSRC (src);
 
   GST_DEBUG_OBJECT (quicsrc, "start");
+  GST_DEBUG_OBJECT (quicsrc, "Host is: %s, port is: %d, log is: %s", quicsrc->host, quicsrc->port, quicsrc->log_file);
 
   if (0 != lsquic_global_init(LSQUIC_GLOBAL_CLIENT))
   {
@@ -479,10 +480,7 @@ gst_quicsrc_start (GstBaseSrc * src)
         ("Failed to initialise lsquic"));
     return FALSE;
   }
-
-  printf("Host is: %s, port is: %d, log is: %s", quicsrc->host, quicsrc->port, quicsrc->log_file);
-  fflush(stdout);
-
+  
   /* Initialize logging */
   FILE *s_log_fh = fopen(quicsrc->log_file, "wb");
 

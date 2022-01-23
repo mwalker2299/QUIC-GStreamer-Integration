@@ -608,8 +608,7 @@ gst_quicsink_start (GstBaseSink * sink)
     return FALSE;
   }
 
-  printf("Host is: %s, port is: %d, log is: %s", quicsink->host, quicsink->port, quicsink->log_file);
-  fflush(stdout);
+  GST_DEBUG_OBJECT(quicsink, "Host is: %s, port is: %d, log is: %s", quicsink->host, quicsink->port, quicsink->log_file);
 
   /* Initialize logging */
   FILE *s_log_fh = fopen(quicsink->log_file, "wb");

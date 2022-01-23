@@ -11,12 +11,37 @@ from mininet.util import dumpNetConnections
 import threading
 import network
 
-def streamServerThread(serverNode, cmd, lock):
+def streamServerThread(serverNode, cmd, timeout, lock):
   with lock:
     print("Stream Server: lock acquired")
     print("Stream Server: " + cmd)
-    result = serverNode.cmd(cmd)
-    print(result)
+
+    # To account for high loss scenarios where 
+    # initial connection attempt fails to reach
+    # server, we run server in background.
+    # If the process has terminated within
+    # The timeout, then we signal the other
+    # threads to end their processes.
+    # Otherwise, we allow more time.
+    # If after this time, the process still
+    # has not completed, we assume a stall occured
+    # and kill the process manually
+    cmd = cmd + " &"
+    serverNode.cmd(cmd)
+    cmd_pid = serverNode.cmd("echo $!")
+
+    sleep(timeout)
+
+    cmd_done = serverNode.cmd("kill -0 " + cmd_pid)
+    print(cmd_done)
+
+    if not cmd_done:
+      print("Stream Server: Process still running, allowing more time before killing manually")
+      sleep(timeout)
+      print("Stream Server: Killing process " + cmd_pid)
+      serverNode.cmd('kill ' + cmd_pid)
+    else:
+      print("Stream Server: process terminated within timeout.")
   
   # We release the lock when done, allowing the other threads to complete
   print("Stream Server: lock released (Done)")
@@ -62,7 +87,7 @@ def monitorThread(node, cmd, lock):
 
 
 
-def run_test(test_params, stream_server_command, stream_client_command, ct_command, protocol_name, log_path, log_level):
+def run_test(test_params, stream_server_command, stream_client_command, ct_command, timeout, protocol_name, log_path, log_level):
   # print(type(log_path))
 
   cross_traffic_enabled = test_params["cross_traffic"]
@@ -75,9 +100,7 @@ def run_test(test_params, stream_server_command, stream_client_command, ct_comma
     num_clients = 1
 
   # Create network topology
-  print("After net")
   net = network.createDumbellTopo(test_params, servers=num_servers, clients=num_clients)
-  print("before Net")
   
   
   # Setup logging paths
@@ -88,7 +111,7 @@ def run_test(test_params, stream_server_command, stream_client_command, ct_comma
   tcpdump_log_path          = os.path.join(log_path, "tcpdump.pcap")
 
   # Create TCPDump command string
-  tcpdump_command = "tcpdump -i s2-eth1 > " + tcpdump_log_path
+  tcpdump_command = "tcpdump -i s1-eth1 > " + tcpdump_log_path
 
 
   # Start network and retrieve nodes
@@ -130,7 +153,7 @@ def run_test(test_params, stream_server_command, stream_client_command, ct_comma
   lock = threading.Lock()
 
   # Create threads for stream_server node, stream_client node and client-side switch node (for tcpdump)
-  stream_server_thread  = threading.Thread(target=streamServerThread, args=(stream_server,stream_server_command,lock))
+  stream_server_thread  = threading.Thread(target=streamServerThread, args=(stream_server,stream_server_command,timeout,lock))
   stream_client_thread  = threading.Thread(target=streamClientThread, args=(stream_client,stream_client_command,lock))
 
   if cross_traffic_enabled:
