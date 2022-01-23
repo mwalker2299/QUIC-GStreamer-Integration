@@ -5,7 +5,7 @@
     "jitter": [0,1,30],
     "queue_length": [70,300,1000],
     "buffer_delay": [0,1,20,200],
-    "bandwidth": [0,10,30,100,300],
+    "bandwidth": [1,10,30,100,300],
     "cross_traffic": [1, 0]
   }
 }
