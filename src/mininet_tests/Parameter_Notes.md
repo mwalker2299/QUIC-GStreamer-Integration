@@ -84,6 +84,12 @@ From what I have read, throughput in this case would be equivalent to our bandwi
 - 300ms
 - 1000ms
 
+However, Colin has suggested that, rather than use fixed values, we should use the following formula:
+
+max_throughput x delay x 1.5 (50% more for safety). Since we need to express the max queue size in packets, then this would be equal to:
+
+- Bandwidth (in bit/s) x (MTU x 8 (for max packet size in bits)) x delay x 1.5
+
 By default, the queue management algorithm used by mininet is tail-drop (new packets are dropped when the queue if full). This makes sense as, according to RFC 8868, tail-drop queue management is the prevalent in real world networks.
 
 
