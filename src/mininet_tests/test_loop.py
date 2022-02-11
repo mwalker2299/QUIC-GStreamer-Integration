@@ -110,8 +110,6 @@ def run_test(test_params, stream_server_command, stream_client_command, ct_comma
   server_lsquic_log_path       = os.path.join(log_path, "lsquic-server.log")
   client_gstreamer_log_path    = os.path.join(log_path, "gst-client.log")
   client_lsquic_log_path       = os.path.join(log_path, "lsquic-client.log")
-  client_side_tcpdump_log_path = os.path.join(log_path, "client_side_tcpdump.pcap")
-  server_side_tcpdump_log_path = os.path.join(log_path, "server_side_tcpdump.pcap")
   server_keylog_path           = os.path.join(log_path, "SSL.keys")
   
 
@@ -135,15 +133,15 @@ def run_test(test_params, stream_server_command, stream_client_command, ct_comma
   # UDP requires that stream_client and stream_server are given the stream_clients address, while QUIC is the opposite
   if "UDP" in protocol_name:
     print("PROTOCOL IS UDP")
-    client_side_tcpdump_command = "tshark -T fields -e frame.time -e rtp.seq -i s2-eth1 > " + client_side_tcpdump_log_path
-    server_side_tcpdump_command = "tshark -T fields -e frame.time -e rtp.seq -i s1-eth1 > " + server_side_tcpdump_log_path
+    client_side_tcpdump_command = "tshark -T fields -e frame.time -e rtp.seq -i s2-eth1 > " + os.path.join(log_path, "client_side_timestamps.txt")
+    server_side_tcpdump_command = "tshark -T fields -e frame.time -e rtp.seq -i s1-eth1 > " + os.path.join(log_path, "server_side_timestamps.txt")
 
     stream_server_command = stream_server_command.format(addr=stream_client.IP())
     stream_client_command = stream_client_command.format(addr=stream_client.IP(), buffer_delay=test_params["buffer_delay"])
   else:
     print("PROTOCOL IS QUIC")
-    client_side_tcpdump_command = "tshark -T fields -e frame.time -e quic.stream_data -i s2-eth1 > " + client_side_tcpdump_log_path
-    server_side_tcpdump_command = "tshark -T fields -e frame.time -e quic.stream_data -i s1-eth1 > " + server_side_tcpdump_log_path
+    client_side_tcpdump_command = "tshark -d udp.port==5000,quic -i s2-eth1 -w " + os.path.join(log_path, "client_side_tcpdump.pcap")
+    server_side_tcpdump_command = "tshark -d udp.port==5000,quic -i s1-eth1 -w " + os.path.join(log_path, "server_side_tcpdump.pcap")
 
     stream_server_command = stream_server_command.format(addr=stream_server.IP(), lsquic_log=server_lsquic_log_path, keylog=server_keylog_path)
     stream_client_command = stream_client_command.format(addr=stream_server.IP(), lsquic_log=client_lsquic_log_path, buffer_delay=test_params["buffer_delay"])
