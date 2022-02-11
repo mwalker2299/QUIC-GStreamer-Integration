@@ -114,11 +114,6 @@ def main():
                 bandwidth_results_path = create_directory(buffer_delay_results_path, bandwidth_experiment_descriptor)
                 test_params["bandwidth"] = bandwidth
 
-                # for queue_length in param_config['parameters']['queue_length']:
-                #   queue_length_experiment_descriptor = "Queue_Length_"+str(queue_length)+"ms"
-                #   queue_length_results_path = create_directory(bandwidth_results_path, queue_length_experiment_descriptor)
-                #   test_params["queue_length"] = queue_length
-
                 for cross_traffic in param_config['parameters']['cross_traffic']:
                   if cross_traffic:
                     cross_traffic_experiment_descriptor = "Cross_Traffic_Enabled"
