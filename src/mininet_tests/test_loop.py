@@ -11,42 +11,41 @@ from mininet.util import dumpNetConnections
 import threading
 import network
 
-def streamServerThread(serverNode, cmd, timeout, lock):
-  with lock:
-    print("Stream Server: lock acquired")
-    print("Stream Server: " + cmd)
+def streamServerThread(serverNode, cmd, timeout, event, log_path):
+  print("Stream Server: " + cmd)
 
-    # To account for high loss scenarios where 
-    # initial connection attempt fails to reach
-    # server, we run server in background.
-    # If the process has terminated within
-    # The timeout, then we signal the other
-    # threads to end their processes.
-    # Otherwise, we allow more time.
-    # If after this time, the process still
-    # has not completed, we assume a stall occured
-    # and kill the process manually
-    cmd = cmd + " &"
-    serverNode.cmd(cmd)
-    cmd_pid = serverNode.cmd("echo $!")
+  # To account for high loss scenarios where 
+  # initial connection attempt fails to reach
+  # server, we run server in background.
+  # If the process has terminated within
+  # The timeout, then we signal the other
+  # threads to end their processes.
+  # Otherwise, we allow more time.
+  # If after this time, the process still
+  # has not completed, we assume a stall occured
+  # and kill the process manually
+  cmd = cmd + " &"
+  serverNode.cmd(cmd)
+  cmd_pid = serverNode.cmd("echo $!")
 
-    sleep(timeout)
+  sleep(timeout)
 
-    cmd_done = serverNode.cmd("kill -0 " + cmd_pid)
-    print(cmd_done)
+  cmd_done = serverNode.cmd("kill -0 " + cmd_pid)
+  print(cmd_done)
 
-    if not cmd_done:
-      print("Stream Server: Process still running, allowing more time before killing manually")
-      sleep(timeout)
-      print("Stream Server: Killing process " + cmd_pid)
-      serverNode.cmd('kill ' + cmd_pid)
-    else:
-      print("Stream Server: process terminated within timeout.")
-  
-  # We release the lock when done, allowing the other threads to complete
-  print("Stream Server: lock released (Done)")
+  if "No such process" in cmd_done:
+    print("Stream Server: process terminated within timeout.")
+    serverNode.cmd("touch " + os.path.join(log_path,"Success"))
+  else:
+    print("Stream Server: Process still running, killing process " + cmd_pid + " manually")
+    serverNode.cmd('kill ' + cmd_pid)
+    serverNode.cmd("touch " + os.path.join(log_path,"Failure"))
 
-def streamClientThread(clientNode, cmd, lock):
+  # We set the event when done, allowing the other threads to complete
+  event.set()
+  print("Stream Server: event set (Done)")
+
+def streamClientThread(clientNode, cmd, event):
   print("Stream Client: starting client")
   # Client should run in background to allow thread to kill process when signaled
   cmd = cmd + " &"
@@ -54,11 +53,12 @@ def streamClientThread(clientNode, cmd, lock):
   clientNode.cmd(cmd)
   cmd_pid = clientNode.cmd("echo $!")
   print("Stream Client: Started Process in background, waiting for server completing")
-  with lock:
-    print("Stream Client: lock acquired, killing process " + cmd_pid)
-    clientNode.cmd('kill ' + cmd_pid)
+  event.wait()
 
-def crossTrafficClientThread(clientNode, cmd, lock):
+  print("Stream Client: event acquired, killing process " + cmd_pid)
+  clientNode.cmd('kill ' + cmd_pid)
+
+def crossTrafficClientThread(clientNode, cmd, event):
   print("Cross Traffic Client: starting client")
   # Client should run in background to allow thread to kill process when signaled
   cmd = cmd + " &"
@@ -66,11 +66,12 @@ def crossTrafficClientThread(clientNode, cmd, lock):
   clientNode.cmd(cmd)
   cmd_pid = clientNode.cmd("echo $!")
   print("Cross Traffic Client: Started Process in background, waiting for server completing")
-  with lock:
-    print("Cross Traffic Client: lock acquired, killing process " + cmd_pid)
-    clientNode.cmd('kill ' + cmd_pid)
+  event.wait()
 
-def monitorThread(node, cmd, lock):
+  print("Cross Traffic Client: event acquired, killing process " + cmd_pid)
+  clientNode.cmd('kill ' + cmd_pid)
+
+def monitorThread(node, cmd, event):
   print("Monitor: starting monitor")
   # Monitor should run in background to allow thread to kill process when signaled
   cmd = cmd + " &"
@@ -78,9 +79,10 @@ def monitorThread(node, cmd, lock):
   node.cmd(cmd)
   cmd_pid = node.cmd("echo $!")
   print("Monitor: Started Process in background, waiting for server completing")
-  with lock:
-    print("Monitor: lock acquired, killing process " + cmd_pid)
-    node.cmd('kill ' + cmd_pid)
+  event.wait()
+
+  print("Monitor: event acquired, killing process " + cmd_pid)
+  node.cmd('kill ' + cmd_pid)
 
 
 
@@ -104,14 +106,15 @@ def run_test(test_params, stream_server_command, stream_client_command, ct_comma
   
   
   # Setup logging paths
-  server_gstreamer_log_path = os.path.join(log_path, "gst-server.log")
-  server_lsquic_log_path    = os.path.join(log_path, "lsquic-server.log")
-  client_gstreamer_log_path = os.path.join(log_path, "gst-client.log")
-  client_lsquic_log_path    = os.path.join(log_path, "lsquic-client.log")
-  tcpdump_log_path          = os.path.join(log_path, "tcpdump.pcap")
+  server_gstreamer_log_path    = os.path.join(log_path, "gst-server.log")
+  server_lsquic_log_path       = os.path.join(log_path, "lsquic-server.log")
+  client_gstreamer_log_path    = os.path.join(log_path, "gst-client.log")
+  client_lsquic_log_path       = os.path.join(log_path, "lsquic-client.log")
+  client_side_tcpdump_log_path = os.path.join(log_path, "client_side_tcpdump.pcap")
+  server_side_tcpdump_log_path = os.path.join(log_path, "server_side_tcpdump.pcap")
+  server_keylog_path           = os.path.join(log_path, "SSL.keys")
+  
 
-  # Create TCPDump command string
-  tcpdump_command = "tcpdump -i s1-eth1 > " + tcpdump_log_path
 
 
   # Start network and retrieve nodes
@@ -124,17 +127,25 @@ def run_test(test_params, stream_server_command, stream_client_command, ct_comma
     cross_traffic_client = net.get('client2')
     cross_traffic_server = net.get('server2')
 
-  client_side_switch = net.get('s2') # Due to mininet restrictions on names, I am restricted to naming the switches s1, s2 rather than something more descriptive
+  # Due to mininet restrictions on names, I am restricted to naming the switches s1, s2 rather than something more descriptive
+  client_side_switch = net.get('s2') 
+  server_side_switch = net.get('s1')
 
   # Substitute stream_server address and lsquic log location into stream_client and stream_server commands
   # UDP requires that stream_client and stream_server are given the stream_clients address, while QUIC is the opposite
   if "UDP" in protocol_name:
     print("PROTOCOL IS UDP")
+    client_side_tcpdump_command = "tshark -T fields -e frame.time -e rtp.seq -i s2-eth1 > " + client_side_tcpdump_log_path
+    server_side_tcpdump_command = "tshark -T fields -e frame.time -e rtp.seq -i s1-eth1 > " + server_side_tcpdump_log_path
+
     stream_server_command = stream_server_command.format(addr=stream_client.IP())
     stream_client_command = stream_client_command.format(addr=stream_client.IP(), buffer_delay=test_params["buffer_delay"])
   else:
     print("PROTOCOL IS QUIC")
-    stream_server_command = stream_server_command.format(addr=stream_server.IP(), lsquic_log=server_lsquic_log_path)
+    client_side_tcpdump_command = "tshark -T fields -e frame.time -e quic.stream_data -i s2-eth1 > " + client_side_tcpdump_log_path
+    server_side_tcpdump_command = "tshark -T fields -e frame.time -e quic.stream_data -i s1-eth1 > " + server_side_tcpdump_log_path
+
+    stream_server_command = stream_server_command.format(addr=stream_server.IP(), lsquic_log=server_lsquic_log_path, keylog=server_keylog_path)
     stream_client_command = stream_client_command.format(addr=stream_server.IP(), lsquic_log=client_lsquic_log_path, buffer_delay=test_params["buffer_delay"])
 
   if cross_traffic_enabled:
@@ -147,28 +158,33 @@ def run_test(test_params, stream_server_command, stream_client_command, ct_comma
   stream_client.cmd('export GST_DEBUG=' + log_level)
   stream_client.cmd('export GST_DEBUG_FILE=' + client_gstreamer_log_path)
 
-  # Create lock for synchronising threads. 
+  # Create event for synchronising threads. 
   # The clients will not stop on their own, and need to be killed once 
   # the stream_server completes its transmission
-  lock = threading.Lock()
+  event = threading.Event()
 
   # Create threads for stream_server node, stream_client node and client-side switch node (for tcpdump)
-  stream_server_thread  = threading.Thread(target=streamServerThread, args=(stream_server,stream_server_command,timeout,lock))
-  stream_client_thread  = threading.Thread(target=streamClientThread, args=(stream_client,stream_client_command,lock))
+  stream_server_thread  = threading.Thread(target=streamServerThread, args=(stream_server,stream_server_command,timeout,event,log_path))
+  stream_client_thread  = threading.Thread(target=streamClientThread, args=(stream_client,stream_client_command,event))
 
   if cross_traffic_enabled:
-    ct_client_thread =  threading.Thread(target=crossTrafficClientThread, args=(cross_traffic_client,ct_command,lock))
+    ct_client_thread =  threading.Thread(target=crossTrafficClientThread, args=(cross_traffic_client,ct_command,event))
 
-  monitor_thread = threading.Thread(target=monitorThread, args=(client_side_switch,tcpdump_command,lock))
+  client_side_monitor_thread = threading.Thread(target=monitorThread, args=(client_side_switch,client_side_tcpdump_command,event))
+  server_side_monitor_thread = threading.Thread(target=monitorThread, args=(server_side_switch,server_side_tcpdump_command,event))
 
   # Start threads, wait for thread completion and then stop the network
+  # We start the monitor threads first and sleep for 1 second so that tcpdump
+  # Does not miss any packets
+  client_side_monitor_thread.start()
+  server_side_monitor_thread.start()
+  sleep(1)
+
   stream_server_thread.start()
   stream_client_thread.start()
 
   if cross_traffic_enabled:
     ct_client_thread.start()
-
-  monitor_thread.start()
 
   stream_server_thread.join()
   stream_client_thread.join()
@@ -176,7 +192,8 @@ def run_test(test_params, stream_server_command, stream_client_command, ct_comma
   if cross_traffic_enabled:
     ct_client_thread.join()
 
-  monitor_thread.join()
+  client_side_monitor_thread.join()
+  server_side_monitor_thread.join()
 
   net.stop()
   print("Test Successful")
