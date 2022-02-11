@@ -223,7 +223,75 @@ No work was done during week 9, 10 and part of 11 as I was focused on coursework
 
 ## Semester 2
 
+## Week 1 
+
+### 12th JAN 2022
 
 
+* *0.50 hours* Meeting with Colin
+* *0.25 hours* Added minutes and plan to appropriate meeting file
+* *2.5 hours* I successfully reproduced the stall that occurs on high loss links within the cli, however, stdout of gstreamer did not provide any hints as to the cause of the problem. I then switched to the gstreamer logs where I discovered that the quic elements were not outputting debug to the log. Additionally, gst-inspect was throwing a segfault when inspecting the quic elements. After some debugging, this was due to an issue where the element was disposed of before start was called. When the element is disposed of, it will destroy its lsquic engine instance. However, in the case of the issue, the engine instance had never been created, leading to a null dereference.
+* *1.5 hours* With access to the logs, I discovered that if a connection was closed due to major packet loss, the server would stall on the connection close callback. GDB shows that the last call is to recv_msg but this should be non-blocking. This requires further investigation, but as this error only occurs on loss levels which would never occur in reality, I have chosen to prioritize finishing work on the test framework first (Identify real world parameters, complete analysis script)
 
+
+### 16th JAN 2022
+
+* *3.00 hours* Researched Network parameters for use in test framework. Decided on Delay and Loss parameters given by RFC 8868. Altered test framework to utilise these params.
+
+
+### 19th JAN 2022
+
+* *0.50 hours* Meeting with Colin
+* *0.25 hours* Added minutes and plan to appropriate meeting file
+* *2.00* After discussion with Colin, performed some preliminary research on new param considerations.
+
+### 21st JAN 2022
+
+* *8.00 hours* Researched new parameters for the test framework. I checked ofcom reports, RFC documents and any other reputable resources I could find to select appropriate values for testing.
+
+### 23rd JAN 2022 
+
+* *2.00 hours* Finished parameter research which began on Friday and wrote up results in a markdown file for Colin.
+
+* *3.5 hours* Modified the test bed to allow it to accept the new parameters that were chosen.
+
+* *2.00 hours* Fixed test bed stall. When running gdb the only thread active is the recvmsg thread which seems to stall. I could not determine why this stall happened. However, the stall could also occur at the start if a connection could not be established. Since this was correct behaviour, I chose to implement an autotimeout to fix both issues. 
+* *1.00 hours* Tested the autotimeout. I ran into an issue where first, QUIC couldnt send packets. This seemed to resolve itself after a reboot. Then while testing I noticed that the loss was not impacting the tests. This appeared to be an issue with tclinks bandwidth param and on closer inspection the first test set this value to 0 rather than 1 Mbit/s. After amending this the issue went away.
+
+
+### 26th JAN 2022
+
+* *3.00 hours* Studied data gprovded by gstreamer logs and packet capture output, and researched potential analysis metrics before meeting with Colin
+* *0.50 hours* Meeting with Colin
+* *0.25 hours* Added minutes and plan to appropriate meeting file
+
+
+### 30th JAN 2022 
+
+* *1.50 hours* Looked into queue length. Mininet only accepts queue size in packets. I have come up with a formula that uses the MTU (1500 for ethernet) to convert the queue size in bytes to the queue size in packets. However, the value seems too low so I need to discuss it with colin before implementing this formula.
+* *1.50 hours* Added a second tcpdump process at the server-side switch. This will allow me to monitor the stack latency of packets. Also changed the synchronisation mechanism of the threads from a lock to an event as this was more appropriate.
+* *1.00 hours* While testing the second tcpdump, I noticed that the timeout no longer seemed to work properly. I was unsure why this was happening at first, but realised the issue was not the timeout, but that the playback time was taking longer than before. This turned out to be due to the low bandwidth setting but interestingly, this did not result in warnings because the server was slowed down due to the bandwidth being low.
+* *2.50 hours* While the packet capture for udp worked well, I realised that it would not be as simple for QUIC. QUIC is encrypted and tcpdump does not appear to have the capability to decrypt it. Due to a lack of good tutorials and poor documentation, it took some time to determine that tshark should be capable of decrypting the QUIC packet captures. However, after reading a number of forum posts and watching a couple of youtube tutorials I uncovered the necessary steps needed to accomplish this.
+
+
+### 31st JAN 2022
+
+* *1.50 hours* Added ability for quicsink to write SSL keys to a file for use by tshark in decrypting quic packets.
+* *3.00 hours* Attempted to decrypt quic packets with tsharks. quicsink correctly logs the keys but unfortunately I was seeing no difference when providing these keys to tshark. After reading some forum posts I came to the conclusion that my version of tshark was too old to decrypt IETF QUIC v1. Installing the latest version from source took some time due to missing dependencies.
+* *4.00 hours* While tshark is able to decrypt IETF QUIC v1, it oddly does not have the capability to decode the stream data as rtp packets. I spent several hours trying to get this to work as well as trying some rtp pcap decoder tools but nothing was working. However, my understanding of tshark did deepen and I realised I could extract a frame timestamp + a hex representation of the stream data. From this, the analysis script will be able to extract the rtp packet number. As a bonus, the frame timestamps will be much easier to compare than the default timestamp. (Took a lot longer than expected but we got there in the end!)
+
+
+### 2nd FEB 2022
+
+* *4.25 hours* Wrote script which extracts timestamps rtp and packet numbers from the frame time and QUIC stream data. The script then calculates the time between sending each packet and that packet arriving. Lost packets are marked with a -1 time difference for easy identification.
+* *0.50 hours* Meeting with Colin
+* *0.25 hours* Added minutes and plan to appropriate meeting file
+
+
+### 9th FEB 2022
+
+* *2.00 hours* Continued work on analysis scripts.
+* *1.00 hours* Confirmed I could connect to the stlinux boxes. This required an update to my cisco anyconnect app which had apparently become too outdated to function. I then struggled to remember the procedure for connecting but after asking some fellow students I was set on the right track.
+* *0.50 hours* Meeting with Colin
+* *0.25 hours* Added minutes and plan to appropriate meeting file
 
