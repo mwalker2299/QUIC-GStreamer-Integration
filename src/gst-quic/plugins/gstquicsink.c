@@ -46,6 +46,7 @@
 #define QUIC_DEFAULT_CERTIFICATE_PATH "/home/matt/Documents/lsquic-tutorial/mycert-cert.pem"
 #define QUIC_DEFAULT_KEY_PATH "/home/matt/Documents/lsquic-tutorial/mycert-key.pem"
 #define QUIC_DEFAULT_LOG_PATH "/home/matt/Documents/lsquic-server-log.txt"
+#define QUIC_DEFAULT_KEYLOG_PATH "/home/matt/Documents/QUIC-SSL.keys"
 
 /* We are interested in the original destination address of received packets.
   The IP_RECVORIGDSTADDR flag can be set on sockets to allow this. However,
@@ -129,7 +130,8 @@ enum
   PROP_PORT,
   PROP_CERT,
   PROP_LOG,
-  PROP_KEY
+  PROP_KEY,
+  PROP_KEYLOG
 };
 
 /* pad templates */
@@ -182,6 +184,10 @@ gst_quicsink_class_init (GstQuicsinkClass * klass)
       g_param_spec_string ("log", "Log",
           "The path to the lsquic log output file", QUIC_DEFAULT_LOG_PATH,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+  g_object_class_install_property (gobject_class, PROP_KEYLOG,
+      g_param_spec_string ("keylog", "Keylog",
+          "The path to the SSL keylog output file", QUIC_DEFAULT_KEYLOG_PATH,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_PORT,
       g_param_spec_int ("port", "Port", "The port used by the quic server", 0,
           G_MAXUINT16, QUIC_DEFAULT_PORT,
@@ -212,6 +218,34 @@ gst_quicsink_class_init (GstQuicsinkClass * klass)
 
 //FIXME: pass this as part of the peer_ctx:
 static SSL_CTX *static_ssl_ctx;
+static gchar *keylog_file;
+
+static void *
+gst_quicsink_open_keylog_file (const SSL *ssl)
+{
+  const lsquic_conn_t *conn;
+  FILE *fh;
+
+  GST_DEBUG_OBJECT(NULL, "Opening keylog file: %s", keylog_file);
+
+  fh = fopen(keylog_file, "ab");
+  if (!fh)
+      GST_ERROR_OBJECT(NULL,"Could not open %s for appending: %s", keylog_file, strerror(errno));
+  return fh;
+}
+
+static void
+gst_quicsink_log_ssl_key (const SSL *ssl, const char *line)
+{
+  FILE *keylog_file;
+  keylog_file = gst_quicsink_open_keylog_file(ssl);
+  if (keylog_file)
+  {
+      fputs(line, keylog_file);
+      fputs("\n", keylog_file);
+      fclose(keylog_file);
+  }
+}
 
 /* This creates a new ssl context. TLS_method indicates that the highest 
  * mutually supported version will be negotiated. Since quic requires TLS 1.3
@@ -246,6 +280,8 @@ gst_quicsink_load_cert_and_key (GstQuicsink * quicsink)
           (NULL),
           ("SSL_CTX_use_PrivateKey_file failed, is the path to the key file correct? path = %s", quicsink->key_file));
     }
+    // Set callback for writing SSL secrets to keylog file
+    SSL_CTX_set_keylog_callback(quicsink->ssl_ctx, gst_quicsink_log_ssl_key);
     static_ssl_ctx = quicsink->ssl_ctx;
 }
 
@@ -405,6 +441,7 @@ gst_quicsink_init (GstQuicsink * quicsink)
   quicsink->cert_file = g_strdup (QUIC_DEFAULT_CERTIFICATE_PATH);
   quicsink->key_file = g_strdup (QUIC_DEFAULT_KEY_PATH);
   quicsink->log_file = g_strdup (QUIC_DEFAULT_LOG_PATH);
+  keylog_file = g_strdup (QUIC_DEFAULT_KEYLOG_PATH);
 
   quicsink->socket = -1;
   quicsink->connection_active = FALSE;
@@ -458,6 +495,13 @@ gst_quicsink_set_property (GObject * object, guint property_id,
       }
       g_free (quicsink->key_file);
       quicsink->key_file = g_strdup (g_value_get_string (value));
+    case PROP_KEYLOG:
+      if (!g_value_get_string (value)) {
+        g_warning ("SSL keylog path property cannot be NULL");
+        break;
+      }
+      g_free (keylog_file);
+      keylog_file = g_strdup (g_value_get_string (value));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -487,6 +531,9 @@ gst_quicsink_get_property (GObject * object, guint property_id,
       break;
     case PROP_KEY:
       g_value_set_string (value, quicsink->key_file);
+      break;
+    case PROP_KEYLOG:
+      g_value_set_string (value, keylog_file);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
