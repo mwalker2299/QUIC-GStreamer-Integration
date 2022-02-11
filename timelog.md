@@ -295,3 +295,9 @@ No work was done during week 9, 10 and part of 11 as I was focused on coursework
 * *0.50 hours* Meeting with Colin
 * *0.25 hours* Added minutes and plan to appropriate meeting file
 
+### 11th FEB 2022
+
+* *5.00 hours* Planned out work for next few days, cleaned up code base, finished work on the stack latency script and added the script to the analysis stage of the test framework.
+* *1.0 hours* Started looking into steps for getting test framework setup on stlinux. Unfortunately, I realise that this would not work as sudo permissions would be required.
+* *2.00 hours* Installed gstreamer from source and confirmed that changes made were reflected in the logs.
+* *1.00* Looked into an issue where QUIC_FPS will run very slowly at 300ms latency. This issue isnt noticeable at the lower param value of 150ms. For some reason lsquic is delaying about 4ms between stream creation and allowing me to write. I'm stumped as to why, but theoretically this shouldnt impact the other QUIC implementations as they create far fewer streams.
