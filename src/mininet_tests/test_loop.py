@@ -178,6 +178,8 @@ def run_test(test_params, stream_server_command, stream_client_command, ct_comma
   server_side_monitor_thread.start()
   sleep(1)
 
+  net.iperf( ( stream_server, stream_client ), l4Type='UDP' )
+
   stream_server_thread.start()
   stream_client_thread.start()
 
