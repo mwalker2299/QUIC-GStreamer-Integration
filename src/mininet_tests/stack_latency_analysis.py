@@ -85,11 +85,13 @@ def extract_rtp_data(filename, decode):
 # If a packet did not arrive at client side, it is marked with a time diff of -1
 def calculate_time_diffs(packet_depature, packet_arrival):
   arrival_count = 0
+  first_packet_seq = packet_depature[0,1]
   result = np.zeros(packet_depature.shape)
 
   for i, row in enumerate(packet_depature):
-    result[i,1] = i
-    if arrival_count < len(packet_arrival) and packet_arrival[arrival_count,1] == i:
+    packet_number = first_packet_seq +i
+    result[i,1] = packet_number
+    if arrival_count < len(packet_arrival) and packet_arrival[arrival_count,1] == packet_number:
       result[i,0] = packet_arrival[arrival_count,0] - row[0] 
       arrival_count+=1
     else:
