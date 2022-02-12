@@ -44,7 +44,6 @@ def convert_bit_string_to_rtp_packet_number(bitstring):
 
 
 def extract_rtp_data(filename, decode):
-  print(filename)
   with open(filename, 'r') as rtp_file:
     Lines = rtp_file.readlines()
     
@@ -79,7 +78,6 @@ def extract_rtp_data(filename, decode):
     # Sort by packet sequence numbers
     packet_info = packet_info[np.argsort(packet_info[:, 0])]
 
-    print(np.asarray(packet_info).shape)
     return packet_info
 
 # calculates diff in initial send time and arrival time for each packet.
