@@ -61,10 +61,10 @@ def extract_rtp_data(filename, decode):
 
               packet_number = convert_bit_string_to_rtp_packet_number(bitstring)
               if packet_number:
-                packet_info.append([time_in_milliseconds, packet_number])
+                packet_info.append([packet_number, time_in_milliseconds])
           else:
             packet_number = int(line_contents[5])
-            packet_info.append([time_in_milliseconds, packet_number])
+            packet_info.append([packet_number, time_in_milliseconds])
 
 
         
@@ -72,11 +72,11 @@ def extract_rtp_data(filename, decode):
 
 
     # We are only interested in the first entry for each rtp packet
-    ignore, unique_indices = np.unique(packet_info[:,1], return_index=True)
+    ignore, unique_indices = np.unique(packet_info[:,0], return_index=True)
     packet_info = packet_info[unique_indices,:]
 
     # Sort by packet sequence numbers
-    packet_info = packet_info[np.argsort(packet_info[:, 1])]
+    packet_info = packet_info[np.argsort(packet_info[:, 0])]
 
     print(np.asarray(packet_info).shape)
     return packet_info
@@ -85,20 +85,19 @@ def extract_rtp_data(filename, decode):
 # If a packet did not arrive at client side, it is marked with a time diff of -1
 def calculate_time_diffs(packet_depature, packet_arrival):
   arrival_count = 0
-  first_packet_seq = packet_depature[0,1]
+  first_packet_seq = packet_depature[0,0]
   result = np.zeros(packet_depature.shape)
 
   for i, row in enumerate(packet_depature):
     packet_number = first_packet_seq +i
-    result[i,1] = packet_number
-    if arrival_count < len(packet_arrival) and packet_arrival[arrival_count,1] == packet_number:
-      result[i,0] = packet_arrival[arrival_count,0] - row[0] 
+    result[i,0] = packet_number
+    if arrival_count < len(packet_arrival) and packet_arrival[arrival_count,0] == packet_number:
+      result[i,1] = packet_arrival[arrival_count,1] - row[1] 
       arrival_count+=1
     else:
-      result[i,0] = -1
+      result[i,1] = -1
   
   return result
-  
 
 def save_results(time_diff_array, directory):
   file_path = os.path.join(directory, "time_diff.txt")
