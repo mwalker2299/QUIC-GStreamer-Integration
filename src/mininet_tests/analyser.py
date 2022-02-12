@@ -17,4 +17,6 @@ def analyse(results_path):
           time_diff = stack_latency_analysis.convert_udp_capture(dirpath)
         else:
           time_diff = stack_latency_analysis.convert_quic_capture(dirpath)
-        stack_latency_analysis.save_results(directory=dirpath, time_diff_array=time_diff)
+
+        time_diff_pd = stack_latency_analysis.convert_results_to_panda(time_diff)
+        stack_latency_analysis.save_results(directory=dirpath, time_diff_panda=time_diff_pd)

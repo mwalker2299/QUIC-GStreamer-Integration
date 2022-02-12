@@ -2,6 +2,7 @@ from datetime import datetime
 from re import U
 import time
 import os
+import pandas as pd
 
 import numpy as np
 
@@ -99,14 +100,17 @@ def calculate_time_diffs(packet_depature, packet_arrival):
   
   return result
 
-def save_results(time_diff_array, directory):
-  file_path = os.path.join(directory, "time_diff.txt")
-  np.savetxt(file_path, time_diff_array)
+def convert_results_to_panda(results):
+  return pd.DataFrame(data=results, columns=["Packet Num.", "Stack Latency"])
+
+def save_results(time_diff_panda, directory):
+  file_path = os.path.join(directory, "time_diff.csv")
+  time_diff_panda.to_csv(file_path, index=False)
 
 
 def load_results(directory):
-  file_path = os.path.join(directory, "time_diff.txt")
-  return np.loadtxt(file_path)
+  file_path = os.path.join(directory, "time_diff.csv")
+  return pd.read_csv(file_path)
 
 
 
