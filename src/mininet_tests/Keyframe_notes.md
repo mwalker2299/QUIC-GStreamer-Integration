@@ -23,7 +23,7 @@ h264 video is seperated into Nal units. Our test video contains Nal units of typ
 
 Nal type 1 units essentially hold frames which are not I frames (non-IDR). Thus we can identify P-frames as all units with Nal type 1. 
 
-Nal type 5 units hold I-frames, and Nal type 7 and 8 hold metadata needed to decode those I-frames (resolution, framerate). 
+Nal type 5 units hold I-frames, and Nal type 7 and 8 hold metadata used when decoding I-frames (resolution, framerate). However, Nal types 7 and 8 do not seem strictly necessary to decode the frames. 
 
-Thus, for an I-frame to be considered complete, The Nal units of type 1 which make up the frame and the associated Nal units of type 7 and 8 must all be delivered intact.
+Thus, for an I-frame to be considered complete, The Nal units of type 5 that make up that frame must be delivered in tact.
 
