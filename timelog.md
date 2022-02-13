@@ -301,3 +301,16 @@ No work was done during week 9, 10 and part of 11 as I was focused on coursework
 * *1.0 hours* Started looking into steps for getting test framework setup on stlinux. Unfortunately, I realise that this would not work as sudo permissions would be required.
 * *2.00 hours* Installed gstreamer from source and confirmed that changes made were reflected in the logs.
 * *1.00* Looked into an issue where QUIC_FPS will run very slowly at 300ms latency. This issue isnt noticeable at the lower param value of 150ms. For some reason lsquic is delaying about 4ms between stream creation and allowing me to write. I'm stumped as to why, but theoretically this shouldnt impact the other QUIC implementations as they create far fewer streams.
+
+### 12th FEB 2022
+
+*1.50 hours* Discovered that 300ms also impacted the UDP implementation. the first 30 or so packets are dropped at this latency. Additionally for all latencyies above 10ms, there is noticable unintended jitter in the first group of packets. I discovered that both of these issues could be eliminated by running an iperf test before running the actual tests for each run.
+*0.50 hours* Eliminated a bug in the stack latency script that caused the time diff to be always -1 (indicating loss)
+*2.00 hours* Added necessary debug to allow app latency and video quality metrics to be extracted. This required some research on H264 encoding and Nal units which was summarised in `Keyframe_notes.md`.
+*0.50 hours* introduced pandas to analysis scripts to improve readability of output
+*2.25 hours* Began work on app latency and video quality analysis script. See `Keyframe_notes.md` and `Log notes.md` for explanation of what is extracted.
+
+
+### 13th FEB 2022
+
+*4.00 hours* Finished possible work on analysis scripts. The test framework will produce csv files for the stack latency and app latency. It will also output the total number of frames, the number of useful frames and the percentage of useful frames
