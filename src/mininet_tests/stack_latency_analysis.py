@@ -102,12 +102,12 @@ def convert_results_to_panda(results):
   return pd.DataFrame(data=results, columns=["Packet Num.", "Stack Latency"])
 
 def save_results(time_diff_panda, directory):
-  file_path = os.path.join(directory, "time_diff.csv")
+  file_path = os.path.join(directory, "Stack_Latency.csv")
   time_diff_panda.to_csv(file_path, index=False)
 
 
 def load_results(directory):
-  file_path = os.path.join(directory, "time_diff.csv")
+  file_path = os.path.join(directory, "Stack_Latency.csv")
   return pd.read_csv(file_path)
 
 
