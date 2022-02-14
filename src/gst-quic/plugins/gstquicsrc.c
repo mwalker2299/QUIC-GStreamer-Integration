@@ -684,31 +684,49 @@ gst_quicsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
   GstQuicsrc *quicsrc = GST_QUICSRC (src);
   GstMapInfo map;
   gboolean new_data = FALSE;
-  struct stream_ctx* stream_to_be_processed;
+  GList * stream_context_queue = NULL;
+  GList * list_element_to_be_processed = NULL;
+  struct stream_ctx* stream_to_be_processed = NULL;
 
   if (!quicsrc->connection_active) {
     return GST_FLOW_EOS;
   }
 
-  if (quicsrc->stream_context_queue != NULL) {
-    if (((struct stream_ctx*) (quicsrc->stream_context_queue->data))->ready) {
+  // Iterate through all of our stream conetexts to find complete streams.
+  // The first completed stream found is converted to a buffer and pushed downstream
+  // If no completed streams are available, we will read packets until one is
+  stream_context_queue = quicsrc->stream_context_queue;
+  while (stream_context_queue != NULL) {
+    if (((struct stream_ctx*) (stream_context_queue->data))->ready) {
       new_data = TRUE;
-      stream_to_be_processed = quicsrc->stream_context_queue->data;
-      quicsrc->stream_context_queue = quicsrc->stream_context_queue->next;
+      quicsrc->stream_context_queue = g_list_remove_link (stream_context_queue, stream_context_queue);
+      list_element_to_be_processed = stream_context_queue;
+      break;
+    } else {
+      stream_context_queue = stream_context_queue->next;
+
     }
   }
 
   while (!new_data)
   {
     gst_quic_read_packets(GST_ELEMENT(quicsrc), quicsrc->socket, quicsrc->engine, quicsrc->local_address);
-    if (quicsrc->stream_context_queue != NULL) {
-      if (((struct stream_ctx*) (quicsrc->stream_context_queue->data))->ready) {
+    stream_context_queue = quicsrc->stream_context_queue;
+    while (stream_context_queue != NULL) {
+      if (((struct stream_ctx*) (stream_context_queue->data))->ready) {
         new_data = TRUE;
-        stream_to_be_processed = quicsrc->stream_context_queue->data;
-        quicsrc->stream_context_queue = quicsrc->stream_context_queue->next;
+        quicsrc->stream_context_queue = g_list_remove_link (stream_context_queue, stream_context_queue);
+        list_element_to_be_processed = stream_context_queue;
+        break;
+      } else {
+        stream_context_queue = stream_context_queue->next;
+
       }
     }
   }
+
+  // Create buffer from stream context
+  stream_to_be_processed = list_element_to_be_processed->data;
 
   *outbuf = gst_buffer_new_and_alloc(stream_to_be_processed->offset);
 
@@ -719,7 +737,14 @@ gst_quicsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
   gst_buffer_unmap(*outbuf, &map);
   gst_buffer_resize(*outbuf, 0, stream_to_be_processed->offset);
 
-  GST_DEBUG_OBJECT (quicsrc, "created buffer of size %lu", gst_buffer_get_size(*outbuf));
+  // Free resources from stream context
+  free(stream_to_be_processed->buffer);
+  free(stream_to_be_processed);
+  g_list_free (list_element_to_be_processed);
+
+
+
+  GST_DEBUG_OBJECT (quicsrc, "Changes Active: created buffer of size %lu", gst_buffer_get_size(*outbuf));
 
   return GST_FLOW_OK;
 }
