@@ -36,7 +36,7 @@ def convert_quic_capture(directory):
   return time_diff
 
 def convert_bit_string_to_rtp_packet_number(bitstring):
-  if "80" == bitstring[0:2]:
+  if "8060" == bitstring[0:4] or "80e0" == bitstring[0:4]:
     packet_number = bitstring[4:8]
     return int(packet_number, 16)
   else:
