@@ -36,18 +36,25 @@ def extract_Nal_unit_data_from_server_logs(filename):
       
       if locate_seq:
         if "Preparing to push" in line:
-          line_contents = str.split(line)
-          sequence_number = int(line_contents[15][4:-1])
+          
+          search_string_left  = "seq="
+          search_string_right = ", rtptime="
+
+          search_string_left_index  = line.find(search_string_left)
+          search_string_right_index = line.find(search_string_right)
+
+          sequence_number = int(line[search_string_left_index+len(search_string_left):search_string_right_index])
           nal_info.append([sequence_number, nal_type, nal_timestamp_in_milliseconds])
           locate_seq = False
         else:
           continue
 
       if "NAL TYPE=" in line:
-        line_contents = str.split(line)
         
-        timestamp = line_contents[0]
-        nal_type  = int(line_contents[12][-1])
+        timestamp = line[:17]
+        search_string = "NAL TYPE="
+        nal_type_index = line.find(search_string)
+        nal_type  = int(line[nal_type_index+len(search_string)])
 
         datetime_format = datetime.strptime(timestamp[:-3], '%H:%M:%S.%f')
         nal_timestamp_in_milliseconds = datetime_format.timestamp() * 1000
@@ -75,15 +82,22 @@ def extract_Nal_unit_data_from_client_logs(filename):
     for line in Lines:
       
       if "gstrtpbasedepayload.c:394:gst_rtp_base_depayload_handle_buffer" in line:
-        line_contents = str.split(line)
-        sequence_number = int(line_contents[11][:-1])
+        search_string_left  = "seqnum "
+        search_string_right = ", rtptime"
+
+        search_string_left_index  = line.find(search_string_left)
+        search_string_right_index = line.find(search_string_right)
+
+        sequence_number = int(line[search_string_left_index+len(search_string_left):search_string_right_index])
         continue
 
       if "handle NAL type" in line:
-        line_contents = str.split(line)
+
+        timestamp = line[:17]
+        search_string = "handle NAL type "
         
-        timestamp = line_contents[0]
-        nal_type  = int(line_contents[11])
+        nal_type_index = line.find(search_string)
+        nal_type  = int(line[nal_type_index+len(search_string)])
 
         datetime_format = datetime.strptime(timestamp[:-3], '%H:%M:%S.%f')
         nal_timestamp_in_milliseconds = datetime_format.timestamp() * 1000
@@ -214,12 +228,12 @@ def save_results(time_diff_panda, frame_stats_panda, directory):
 
 
 
-# string  = "0:00:00.197921663 [334m476745[00m 0x561e00ca16a0 [33;01mLOG    [00m [00m    rtpbasedepayload gstrtpbasedepayload.c:394:gst_rtp_base_depayload_handle_buffer:<rtph264depay0>[00m discont 0, seqnum 6809, rtptime 2331433938, pts 0:00:00.002168297, dts 0:00:00.002797405"
-# string2 = "0:00:00.197936443 [334m476745[00m 0x561e00ca16a0 [37mDEBUG  [00m [00m        rtph264depay gstrtph264depay.c:892:gst_rtp_h264_depay_handle_nal:<rtph264depay0>[00m handle NAL type 8"
+# string  = "0:00:17.814566771 [336m1507487[00m 0x55806ef5c520 [37mDEBUG  [00m [00m          rtph264pay gstrtph264pay.c:821:gst_rtp_h264_pay_payload_nal:<rtph264pay0>[00m Processing Buffer with NAL TYPE=1 0:00:17.720000000"
+# string2 = "0:00:00.175037545 [335m 3454[00m 0x55b7aa9e4120 [37mDEBUG  [00m [00m          rtph264pay gstrtph264pay.c:821:gst_rtp_h264_pay_payload_nal:<rtph264pay0>[00m Processing Buffer with NAL TYPE=7 0:00:00.000000000"
 
 # line_contents = str.split(string)
 
-# print(int(line_contents[11][:-1]))
+# print(int(line_contents[12][-1]))
 
 # line_contents2 = str.split(string2)
 
