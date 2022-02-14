@@ -304,13 +304,19 @@ No work was done during week 9, 10 and part of 11 as I was focused on coursework
 
 ### 12th FEB 2022
 
-*1.50 hours* Discovered that 300ms also impacted the UDP implementation. the first 30 or so packets are dropped at this latency. Additionally for all latencyies above 10ms, there is noticable unintended jitter in the first group of packets. I discovered that both of these issues could be eliminated by running an iperf test before running the actual tests for each run.
-*0.50 hours* Eliminated a bug in the stack latency script that caused the time diff to be always -1 (indicating loss)
-*2.00 hours* Added necessary debug to allow app latency and video quality metrics to be extracted. This required some research on H264 encoding and Nal units which was summarised in `Keyframe_notes.md`.
-*0.50 hours* introduced pandas to analysis scripts to improve readability of output
-*2.25 hours* Began work on app latency and video quality analysis script. See `Keyframe_notes.md` and `Log notes.md` for explanation of what is extracted.
+* *1.50 hours* Discovered that 300ms also impacted the UDP implementation. the first 30 or so packets are dropped at this latency. Additionally for all latencyies above 10ms, there is noticable unintended jitter in the first group of packets. I discovered that both of these issues could be eliminated by running an iperf test before running the actual tests for each run.
+* *0.50 hours* Eliminated a bug in the stack latency script that caused the time diff to be always -1 (indicating loss)
+* *2.00 hours* Added necessary debug to allow app latency and video quality metrics to be extracted. This required some research on H264 encoding and Nal units which was summarised in `Keyframe_notes.md`.
+* *0.50 hours* introduced pandas to analysis scripts to improve readability of output
+* *2.25 hours* Began work on app latency and video quality analysis script. See `Keyframe_notes.md` and `Log notes.md` for explanation of what is extracted.
 
 
 ### 13th FEB 2022
 
-*4.00 hours* Finished possible work on analysis scripts. The test framework will produce csv files for the stack latency and app latency. It will also output the total number of frames, the number of useful frames and the percentage of useful frames
+* *4.00 hours* Finished possible work on analysis scripts. The test framework will produce csv files for the stack latency and app latency. It will also output the total number of frames, the number of useful frames and the percentage of useful frames
+
+### 14th FEB 2022
+
+* *1.00 hours* Fixed a bug in the app latency script. It previously expected values to occur in a fixed place on relevant log lines. This however can be variable in rare cases. It now searches the string to find the values regardless of their absolute position in the string
+* *2.50 hours* Fixed a bug in gstquicsrc which prevented later streams from being processed when they were ready in the event that the earliest stream was not ready. Essentially the bug introduced HOL blocking. Also added code to ensure stream contexts were freed.
+* *0.5 hours* Fixed bug in stack latency script. The restriction on what sequence of bytes represented the start of rtp packets we are interested in was to lenient resulting in incorrect recoding of sequence numbers. I have placed tighter restriction in the code now and cannot recreate the issue. 
