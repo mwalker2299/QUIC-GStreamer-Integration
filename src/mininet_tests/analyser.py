@@ -14,6 +14,8 @@ def analyse(results_path):
   for dirpath, dirnames, filenames in os.walk(results_path):
       ## We are looking for lead_nodes in the dir tree
       if not dirnames:
+        if "Failure" in filenames:
+          continue
 
         # Extract stack latency data
         if "UDP" in dirpath:
@@ -29,6 +31,5 @@ def analyse(results_path):
         frame_stats_pd = gstreamer_log_analysis.identify_useful_units(app_latency)
         app_latency_pd = gstreamer_log_analysis.convert_results_to_panda(app_latency)
         gstreamer_log_analysis.save_results(time_diff_panda=app_latency_pd, frame_stats_panda=frame_stats_pd, directory=dirpath)
-
 
 
