@@ -320,3 +320,14 @@ No work was done during week 9, 10 and part of 11 as I was focused on coursework
 * *1.00 hours* Fixed a bug in the app latency script. It previously expected values to occur in a fixed place on relevant log lines. This however can be variable in rare cases. It now searches the string to find the values regardless of their absolute position in the string
 * *2.50 hours* Fixed a bug in gstquicsrc which prevented later streams from being processed when they were ready in the event that the earliest stream was not ready. Essentially the bug introduced HOL blocking. Also added code to ensure stream contexts were freed.
 * *0.5 hours* Fixed bug in stack latency script. The restriction on what sequence of bytes represented the start of rtp packets we are interested in was to lenient resulting in incorrect recoding of sequence numbers. I have placed tighter restriction in the code now and cannot recreate the issue. 
+
+
+### 16th FEB 2022
+
+* *1.50 hours* fixed issue where late packets would not be dropped by rtpjitterbuffer
+* *2.00 hours* Started to rethink the current evaluation strategy. Right now we have multiple runs using different sized jitterbuffers on the receive side. If a packet is late it is marked as lost and never passed onto the application. Thus the associated nal unit is never complete and we consider it to be a useless frame (For I-frames this status propagates to future p-frames). However, it might make more sense just to have a large jitter buffer (1 seconds) and then calculate which frames would be useful under different latency requirements. (e.g. VOIP starts to become unusable with an apllication latency of over 150ms, IPTV currently operates with a minimum latency of 1s on ultra low latency streams)
+* *1.00 hours* Started work on dissertation
+* *0.50 hours* Meeting with Colin
+* *0.25 hours* Added minutes and plan to appropriate meeting file
+* *1.00 hours* Procured a new test video (BBB) and cut it down to a 90 second clip
+* *3.00 hours* Fixed an issue where the new 1 second jitter buffer would hold the first few packets for up to a second as it was not sure it had seen the first packet. This should have been configurable from the commandline but I was seeing no difference when I passed the necessary cap (seqnum-base). I have hardcoded this for now.
