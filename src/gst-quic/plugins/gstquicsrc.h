@@ -53,6 +53,7 @@ struct stream_ctx
     gsize   offset;           /* Number of bytes read from stream */
     gchar* buffer;
     gboolean ready;           /* set when stream has been read to completion */
+    guint streamID;
 };
 
 struct _GstQuicsrc
@@ -60,6 +61,8 @@ struct _GstQuicsrc
   GstPushSrc parent;
 
   gint socket;
+
+  guint stream_count;
 
   GstCaps *caps;
 

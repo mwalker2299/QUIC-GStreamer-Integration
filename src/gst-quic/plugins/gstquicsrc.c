@@ -173,6 +173,7 @@ gst_quicsrc_init (GstQuicsrc * quicsrc)
   quicsrc->connection_active = FALSE;
   quicsrc->engine = NULL;
   quicsrc->connection = NULL;
+  quicsrc->stream_count = 0;
 
   quicsrc->stream_context_queue = NULL;
 
@@ -373,13 +374,16 @@ static lsquic_stream_ctx_t *
 gst_quicsrc_on_new_stream (void *stream_if_ctx, struct lsquic_stream *stream)
 {
     GstQuicsrc *quicsrc = GST_QUICSRC (stream_if_ctx);
-    GST_DEBUG_OBJECT(quicsrc, "MW: Accepted new stream for reading");
     lsquic_stream_wantread(stream, 1);
 
     struct stream_ctx* stream_ctx = malloc(sizeof(struct stream_ctx));
     stream_ctx->buffer = malloc(10000);
     stream_ctx->offset = 0;
     stream_ctx->ready = FALSE;
+    stream_ctx->streamID = quicsrc->stream_count;
+    quicsrc->stream_count++;
+
+    GST_DEBUG_OBJECT(quicsrc, "MW: Accepted new stream for reading, ID: %u", stream_ctx->streamID);
 
     quicsrc->stream_context_queue = g_list_append(quicsrc->stream_context_queue, (void *) stream_ctx);
     return (void *) stream_ctx;
@@ -395,11 +399,11 @@ gst_quicsrc_readf (void *ctx, const unsigned char *data, size_t len, int fin)
     {
         memcpy(stream_ctx->buffer+stream_ctx->offset, data, len);
         stream_ctx->offset += len;
-        GST_DEBUG("MW: Read %lu bytes from stream", len);
+        GST_DEBUG("MW: Read %lu bytes from stream, ID: %u", len, stream_ctx->streamID);
     }
     if (fin)
     {
-        GST_DEBUG("MW: Read end of stream");
+        GST_DEBUG("MW: Read end of stream, ID: %u", stream_ctx->streamID);
         stream_ctx->ready = TRUE;
         lsquic_stream_shutdown(stream, 2);
     }
@@ -699,7 +703,7 @@ gst_quicsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
   while (stream_context_queue != NULL) {
     if (((struct stream_ctx*) (stream_context_queue->data))->ready) {
       new_data = TRUE;
-      quicsrc->stream_context_queue = g_list_remove_link (stream_context_queue, stream_context_queue);
+      quicsrc->stream_context_queue = g_list_remove_link (quicsrc->stream_context_queue, stream_context_queue);
       list_element_to_be_processed = stream_context_queue;
       break;
     } else {
@@ -715,7 +719,7 @@ gst_quicsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
     while (stream_context_queue != NULL) {
       if (((struct stream_ctx*) (stream_context_queue->data))->ready) {
         new_data = TRUE;
-        quicsrc->stream_context_queue = g_list_remove_link (stream_context_queue, stream_context_queue);
+        quicsrc->stream_context_queue = g_list_remove_link (quicsrc->stream_context_queue, stream_context_queue);
         list_element_to_be_processed = stream_context_queue;
         break;
       } else {
@@ -744,7 +748,7 @@ gst_quicsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
 
 
 
-  GST_DEBUG_OBJECT (quicsrc, "Changes Active: created buffer of size %lu", gst_buffer_get_size(*outbuf));
+  GST_DEBUG_OBJECT (quicsrc, "Read full rtp packet from stream %u. Pushing buffer of size %lu", stream_to_be_processed->streamID, gst_buffer_get_size(*outbuf));
 
   return GST_FLOW_OK;
 }
