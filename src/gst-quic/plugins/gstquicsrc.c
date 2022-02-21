@@ -163,6 +163,24 @@ gst_quicsrc_class_init (GstQuicsrcClass * klass)
   push_src_class->create = GST_DEBUG_FUNCPTR (gst_quicsrc_create);
 }
 
+static gboolean
+tick_connection (gpointer context) 
+{
+  GstQuicsrc *quicsrc = GST_QUICSRC (context);
+
+  GST_OBJECT_LOCK(quicsrc);
+  if (quicsrc->engine) {
+    GST_DEBUG_OBJECT(quicsrc, "ticking connection");
+    gst_quic_read_packets(GST_ELEMENT(quicsrc), quicsrc->socket, quicsrc->engine, quicsrc->local_address);
+    GST_OBJECT_UNLOCK(quicsrc);
+    return TRUE;
+  } else {
+    GST_OBJECT_UNLOCK(quicsrc);
+    return FALSE;
+  }
+
+}
+
 static void
 gst_quicsrc_init (GstQuicsrc * quicsrc)
 {
@@ -502,6 +520,9 @@ gst_quicsrc_start (GstBaseSrc * src)
   // Initialize engine settings to default values
   lsquic_engine_init_settings(&engine_settings, QUIC_CLIENT);
 
+  // Disable delayed acks to improve response to loss
+  engine_settings.es_delayed_acks = 0;
+
   // Parse IP address and set port number
   if (!gst_quic_set_addr(quicsrc->host, quicsrc->port, &server_addr))
   {
@@ -604,6 +625,8 @@ gst_quicsrc_start (GstBaseSrc * src)
   while (!quicsrc->connection_active) {
     gst_quic_read_packets(GST_ELEMENT(quicsrc), quicsrc->socket, quicsrc->engine, quicsrc->local_address);
   }
+
+  g_timeout_add(1, tick_connection, quicsrc);
   
 
   return TRUE;
@@ -712,6 +735,7 @@ gst_quicsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
     }
   }
 
+  GST_OBJECT_LOCK(quicsrc);
   while (!new_data)
   {
     gst_quic_read_packets(GST_ELEMENT(quicsrc), quicsrc->socket, quicsrc->engine, quicsrc->local_address);
@@ -728,6 +752,7 @@ gst_quicsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
       }
     }
   }
+  GST_OBJECT_UNLOCK(quicsrc);
 
   // Create buffer from stream context
   stream_to_be_processed = list_element_to_be_processed->data;

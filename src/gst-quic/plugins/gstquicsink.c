@@ -220,6 +220,29 @@ gst_quicsink_class_init (GstQuicsinkClass * klass)
 static SSL_CTX *static_ssl_ctx;
 static gchar *keylog_file;
 
+static gboolean
+tick_connection (gpointer context) 
+{
+  GstQuicsink *quicsink = GST_QUICSINK (context);
+  int diff = 0;
+  gboolean tickable = FALSE;
+
+  GST_OBJECT_LOCK(quicsink);
+
+  if (quicsink->engine) {
+    tickable = lsquic_engine_earliest_adv_tick(quicsink->engine, &diff);
+    GST_DEBUG_OBJECT(quicsink, "Connection %s tickable. Diff = %d", tickable ? "is" : "is not", diff);
+    gst_quic_read_packets(GST_ELEMENT(quicsink), quicsink->socket, quicsink->engine, quicsink->local_address);
+
+    GST_OBJECT_UNLOCK(quicsink);
+    return TRUE;
+  } else {
+    GST_OBJECT_UNLOCK(quicsink);
+    return FALSE;
+  }
+
+}
+
 static void *
 gst_quicsink_open_keylog_file (const SSL *ssl)
 {
@@ -674,6 +697,9 @@ gst_quicsink_start (GstBaseSink * sink)
   // Initialize engine settings to default values
   lsquic_engine_init_settings(&engine_settings, QUIC_SERVER);
 
+  // Disable delayed acks to improve response to loss
+  engine_settings.es_delayed_acks = 0;
+
   // Parse IP address and set port number
   if (!gst_quic_set_addr(quicsink->host, quicsink->port, &server_addr))
   {
@@ -785,6 +811,8 @@ gst_quicsink_start (GstBaseSink * sink)
   while (!quicsink->connection_active) {
     gst_quic_read_packets(GST_ELEMENT(quicsink), quicsink->socket, quicsink->engine, quicsink->local_address);
   }
+
+  g_timeout_add(1, tick_connection, quicsink);
 
   return TRUE;
 }
@@ -914,12 +942,16 @@ gst_quicsink_render (GstBaseSink * sink, GstBuffer * buffer)
   quicsink->stream_ctx.offset = 0;
   quicsink->stream_ctx.buffer_size = gst_buffer_get_size(quicsink->stream_ctx.buffer);
 
+  // Simultaneous attempts to process the lsquic connection via read packets will cause 
+  // An assertion error within lsquic. So we take the lock to prevent this from happening
+  GST_OBJECT_LOCK(quicsink);
   lsquic_conn_make_stream(quicsink->connection);
 
   while (quicsink->stream_ctx.offset != quicsink->stream_ctx.buffer_size) 
   {
     gst_quic_read_packets(GST_ELEMENT(quicsink), quicsink->socket, quicsink->engine, quicsink->local_address);
   }
+  GST_OBJECT_UNLOCK(quicsink);
 
   return GST_FLOW_OK;
 }
