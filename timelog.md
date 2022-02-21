@@ -329,5 +329,17 @@ No work was done during week 9, 10 and part of 11 as I was focused on coursework
 * *1.00 hours* Started work on dissertation
 * *0.50 hours* Meeting with Colin
 * *0.25 hours* Added minutes and plan to appropriate meeting file
-* *1.00 hours* Procured a new test video (BBB) and cut it down to a 90 second clip
+* *1.00 hours* Procured a new test video (BBB) and cut it down to a 60 second clip
 * *3.00 hours* Fixed an issue where the new 1 second jitter buffer would hold the first few packets for up to a second as it was not sure it had seen the first packet. This should have been configurable from the commandline but I was seeing no difference when I passed the necessary cap (seqnum-base). I have hardcoded this for now.
+
+
+### 18th FEB 2022
+
+* *1.00 hours* Fixed a bug in gstquicsrc that would delete stream contexts which had not yet been processed.
+* *1.00 hours* Looked into adding TCP to the list of implementations. However, As I had seen before, the tcp gstreamer elements do not seem to work very well. The rtp elements quickly began complaining that all of the buffers were invalid. For now, I have chosen to exclude TCP as the single stream QUIC implementation serves the same purpose.
+* *2.00 hours* Investigated to see if the rtpjitterbuffer could be modified such that packets are held based on their frame. I.e. if we are waiting on packets from Frame A to arrive, but currently have packets from Frame B, it would be ideal for Frame B to be pushed. However, this does not seem possible.
+* *4.00 hours* Looked into issue where quic_fps can take up to 40ms to retransmit a lost packet. I tried to add the tcp implementation for comparison but the element does not seem to work with the the rtp payloaders. By increasing the rate at which the lsquic engine ticks, and reducing the max ack delay to 5ms we do see improvement. However, there are still outliers. For now I will implement single stream QUIC and GOP per stream quic and see if this behaviour remains (its possible the high number of streams is impacting performance and this is the cause of the delay)
+
+### 21st FEB 2022
+
+* *8.00 hours* Contrary to the previous entry, I next decided to debug the issues with the tcp elements when using rtp over tcp. At first I believed that the issue lay in my pipeline construction as well as the commands I was giving to tshark. Strangely however, rtp data just seems to go missing when it is passed to the existing tcp element. The element appears to be set up for multiple clients with bidirectional data transfer and is incredibly complicated. As it would take several hours atleast to comprehend how this element works, I instead opted to create my own as I felt this would be quicker. This ended up working quite well so we now have a working tcp implementation for use in testing.
