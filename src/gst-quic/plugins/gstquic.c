@@ -63,5 +63,5 @@ plugin_init (GstPlugin * plugin)
   return TRUE;
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR, quic, "transfer data via QUIC", plugin_init, "1.19.0", "LGPL",   /* FIXME */
+GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR, quic, "transfer data via QUIC", plugin_init, "1.16.2", "LGPL",   /* FIXME */
     "GStreamer", "http://gstreamer.net/")
