@@ -18,7 +18,7 @@ def analyse(results_path):
           continue
 
         # Extract stack latency data
-        if "UDP" in dirpath:
+        if "UDP" in dirpath or "TCP" in dirpath:
           stack_latency = stack_latency_analysis.convert_udp_capture(dirpath)
         else:
           stack_latency = stack_latency_analysis.convert_quic_capture(dirpath)
