@@ -63,8 +63,10 @@ def extract_rtp_data(filename, decode):
               if packet_number:
                 packet_info.append([packet_number, time_in_milliseconds])
           else:
-            packet_number = int(line_contents[5])
-            packet_info.append([packet_number, time_in_milliseconds])
+            for packet in str.split(line_contents[5], ','):
+
+              packet_number = int(packet)
+              packet_info.append([packet_number, time_in_milliseconds])
 
 
         
