@@ -18,18 +18,23 @@ def analyse(results_path):
           continue
 
         # Extract stack latency data
-        if "UDP" in dirpath or "TCP" in dirpath:
+        if "UDP" in dirpath:
           stack_latency = stack_latency_analysis.convert_udp_capture(dirpath)
+        elif "TCP" in dirpath:
+          stack_latency_arrival, stack_latency_available = stack_latency_analysis.convert_tcp_capture(dirpath)
         else:
           stack_latency = stack_latency_analysis.convert_quic_capture(dirpath)
 
-        stack_latency_pd = stack_latency_analysis.convert_results_to_panda(stack_latency)
-        stack_latency_analysis.save_results(time_diff_panda=stack_latency_pd, directory=dirpath)
+        if "TCP" in dirpath:
+          stack_latency_arrival_pd   = stack_latency_analysis.convert_results_to_panda(stack_latency_arrival)
+          stack_latency_available_pd = stack_latency_analysis.convert_results_to_panda(stack_latency_available)
+          stack_latency_analysis.save_results_tcp(arrival_time_diff_panda=stack_latency_arrival_pd, available_time_diff_panda=stack_latency_available_pd, directory=dirpath)
+        else:
+          stack_latency_pd = stack_latency_analysis.convert_results_to_panda(stack_latency)
+          stack_latency_analysis.save_results(time_diff_panda=stack_latency_pd, directory=dirpath)
 
         # Extract app latency data
         app_latency    = gstreamer_log_analysis.extract_Nal_unit_data(dirpath)
         frame_stats_pd = gstreamer_log_analysis.identify_useful_units(app_latency)
         app_latency_pd = gstreamer_log_analysis.convert_results_to_panda(app_latency)
         gstreamer_log_analysis.save_results(time_diff_panda=app_latency_pd, frame_stats_panda=frame_stats_pd, directory=dirpath)
-
-
