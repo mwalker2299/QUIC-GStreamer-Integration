@@ -351,3 +351,9 @@ No work was done during week 9, 10 and part of 11 as I was focused on coursework
 * *0.5 hours* When testing the new latency analysis for tcp, I noticed that some packets took more time than was reasonable despite the fact that they were never lost. This turned out to be caused by a delay when `rtph264pay` pushes a list of buffers. I was unable to reduce this delay.
 * *0.50 hours* Renamed existing `gstquicsrc`/`gstquicsink` elements to `gstquicsrcpps`/`gstquicsinkpps` (both in terms of filename and within the code itself) to reflect that this element sends a single rtp packet per stream. Tested to make sure I hadn't inadvertantly broken anything.
 * *4.50 hours* Added single stream implementation of QUIC and performed testing. Ran into a bug that appeared to arise from lsquic not updating its flow control window but actually was caused by a null reference. Rather than crash, the pipeline stalled and lsquic seemed to lose some functionality. The odd presentation made it difficult to identify the cause but after some debugging I identified the issue. After this I kicked off a test using all the existing implementations.
+
+
+### 23rd FEB 2022
+
+* *0.50 hours* Meeting with Colin
+* *0.25 hours* Added minutes and plan to appropriate meeting file
