@@ -19,14 +19,15 @@
 /**
  * SECTION:element-gstquicsrc
  *
- * The quicsrc element does FIXME stuff.
+ * The quicsrc element receives data over the network using the QUIC protocol.
+ * It uses a single stream to transmit data ans so may suffer for HOL blocking
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -v fakesrc ! quicsrc ! FIXME ! fakesink
+ * gst-launch-1.0 quicsrc host={addr} port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96, seqnum-base=(int)0\" ! rtpjitterbuffer latency={buffer_delay} ! rtph264depay ! h264parse ! queue ! decodebin ! videoconvert !  fakesink -v
  * ]|
- * FIXME Describe what the pipeline does.
+ * Receive data over the network using the QUIC protocol
  * </refsect2>
  */
 
@@ -42,6 +43,7 @@
 #define QUIC_DEFAULT_PORT 12345
 #define QUIC_DEFAULT_HOST "127.0.0.1"
 #define QUIC_DEFAULT_LOG_PATH "/home/matt/Documents/lsquic-client-log.txt"
+#define READ_BUFFER_SIZE 30000
 
 GST_DEBUG_CATEGORY_STATIC (gst_quicsrc_debug_category);
 #define GST_CAT_DEFAULT gst_quicsrc_debug_category
@@ -191,9 +193,9 @@ gst_quicsrc_init (GstQuicsrc * quicsrc)
   quicsrc->connection_active = FALSE;
   quicsrc->engine = NULL;
   quicsrc->connection = NULL;
-  quicsrc->stream_count = 0;
+  quicsrc->stream = NULL;
 
-  quicsrc->stream_context_queue = NULL;
+  memset(&quicsrc->stream_context, 0, sizeof(quicsrc->stream_context));
 
   /* configure basesrc to be a live source */
   gst_base_src_set_live (GST_BASE_SRC (quicsrc), TRUE);
@@ -296,6 +298,16 @@ gst_quicsrc_dispose (GObject * object)
 
   GST_DEBUG_OBJECT (quicsrc, "dispose");
 
+  // Free resources from stream context
+  if (quicsrc->stream_context) {
+    free(quicsrc->stream_context->buffer);
+    free(quicsrc->stream_context);
+
+    quicsrc->stream_context->buffer = NULL;
+    quicsrc->stream_context = NULL;
+  }
+
+
   if (quicsrc->engine) {
     lsquic_engine_destroy(quicsrc->engine);
   }
@@ -394,16 +406,16 @@ gst_quicsrc_on_new_stream (void *stream_if_ctx, struct lsquic_stream *stream)
     GstQuicsrc *quicsrc = GST_QUICSRC (stream_if_ctx);
     lsquic_stream_wantread(stream, 1);
 
-    struct stream_ctx* stream_ctx = malloc(sizeof(struct stream_ctx));
-    stream_ctx->buffer = malloc(10000);
+    quicsrc->stream = stream;
+
+    struct single_stream_ctx* stream_ctx = malloc(sizeof(struct single_stream_ctx));
+    stream_ctx->buffer = malloc(READ_BUFFER_SIZE);
     stream_ctx->offset = 0;
-    stream_ctx->ready = FALSE;
-    stream_ctx->streamID = quicsrc->stream_count;
-    quicsrc->stream_count++;
+    stream_ctx->finished = FALSE;
 
-    GST_DEBUG_OBJECT(quicsrc, "MW: Accepted new stream for reading, ID: %u", stream_ctx->streamID);
+    GST_DEBUG_OBJECT(quicsrc, "MW: Accepted new stream for reading");
 
-    quicsrc->stream_context_queue = g_list_append(quicsrc->stream_context_queue, (void *) stream_ctx);
+    quicsrc->stream_context = stream_ctx;
     return (void *) stream_ctx;
 }
 
@@ -411,18 +423,24 @@ static size_t
 gst_quicsrc_readf (void *ctx, const unsigned char *data, size_t len, int fin)
 {
     struct lsquic_stream *stream = (struct lsquic_stream *) ctx;
-    struct stream_ctx *stream_ctx = (struct stream_ctx*) ((void *) lsquic_stream_get_ctx(stream));
+    struct single_stream_ctx *stream_context = (struct single_stream_ctx*) ((void *) lsquic_stream_get_ctx(stream));
 
     if (len) 
     {
-        memcpy(stream_ctx->buffer+stream_ctx->offset, data, len);
-        stream_ctx->offset += len;
-        GST_DEBUG("MW: Read %lu bytes from stream, ID: %u", len, stream_ctx->streamID);
+        if ((len + stream_context->offset) > READ_BUFFER_SIZE)
+        {
+          GST_DEBUG("Buffer full, stopped reading for now");
+          lsquic_stream_wantread(stream, 0);
+          return 0;
+        }
+        memcpy(stream_context->buffer+stream_context->offset, data, len);
+        stream_context->offset += len;
+        GST_DEBUG("MW: Read %lu bytes from stream", len);
     }
     if (fin)
     {
-        GST_DEBUG("MW: Read end of stream, ID: %u", stream_ctx->streamID);
-        stream_ctx->ready = TRUE;
+        GST_DEBUG("MW: Read end of stream");
+        stream_context->finished = TRUE;
         lsquic_stream_shutdown(stream, 2);
     }
     return len;
@@ -437,7 +455,7 @@ gst_quicsrc_on_read (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsquic_s
     if (bytes_read < 0)
     {
         if (errno != EWOULDBLOCK) {
-          GST_WARNING("Error while reading from quic stream, closing stream");
+          GST_WARNING("Error %d while reading from quic stream, closing stream", errno);
           lsquic_stream_close(stream);
         }
     }
@@ -450,7 +468,7 @@ gst_quicsrc_on_write (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsquic_
     ssize_t bytes_written;
 
     lsquic_conn_t *conn = lsquic_stream_conn(stream);
-    struct stream_ctx *stream_ctx = (struct stream_ctx*) (lsquic_stream_ctx);
+    struct single_stream_ctx *stream_ctx = (struct single_stream_ctx*) (lsquic_stream_ctx);
 
     GST_DEBUG("writing stream");
 
@@ -477,7 +495,6 @@ gst_quicsrc_on_write (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsquic_
 static void
 gst_quicsrc_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsquic_stream_ctx)
 {
-    struct stream_ctx *stream_ctx = (struct stream_ctx*) (stream_ctx);
     GST_DEBUG("stream closed");
 }
 
@@ -622,7 +639,7 @@ gst_quicsrc_start (GstBaseSrc * src)
 
   lsquic_engine_process_conns(quicsrc->engine);
 
-  while (!quicsrc->connection_active) {
+  while (!quicsrc->connection_active || !quicsrc->stream) {
     gst_quic_read_packets(GST_ELEMENT(quicsrc), quicsrc->socket, quicsrc->engine, quicsrc->local_address);
   }
 
@@ -711,69 +728,38 @@ gst_quicsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
   GstQuicsrc *quicsrc = GST_QUICSRC (src);
   GstMapInfo map;
   gboolean new_data = FALSE;
-  GList * stream_context_queue = NULL;
-  GList * list_element_to_be_processed = NULL;
-  struct stream_ctx* stream_to_be_processed = NULL;
 
-  if (!quicsrc->connection_active) {
+  if (!quicsrc->connection_active || (quicsrc->stream_context->finished && quicsrc->stream_context->offset == 0)) {
     return GST_FLOW_EOS;
   }
+  
 
-  // Iterate through all of our stream conetexts to find complete streams.
-  // The first completed stream found is converted to a buffer and pushed downstream
-  // If no completed streams are available, we will read packets until one is
-  stream_context_queue = quicsrc->stream_context_queue;
-  while (stream_context_queue != NULL) {
-    if (((struct stream_ctx*) (stream_context_queue->data))->ready) {
-      new_data = TRUE;
-      quicsrc->stream_context_queue = g_list_remove_link (quicsrc->stream_context_queue, stream_context_queue);
-      list_element_to_be_processed = stream_context_queue;
-      break;
-    } else {
-      stream_context_queue = stream_context_queue->next;
-
-    }
-  }
-
+  // Call read with lock taken as simulatenous calls can lead to an assertion error within lsquic
   GST_OBJECT_LOCK(quicsrc);
-  while (!new_data)
+  while (quicsrc->stream_context->offset == 0)
   {
     gst_quic_read_packets(GST_ELEMENT(quicsrc), quicsrc->socket, quicsrc->engine, quicsrc->local_address);
-    stream_context_queue = quicsrc->stream_context_queue;
-    while (stream_context_queue != NULL) {
-      if (((struct stream_ctx*) (stream_context_queue->data))->ready) {
-        new_data = TRUE;
-        quicsrc->stream_context_queue = g_list_remove_link (quicsrc->stream_context_queue, stream_context_queue);
-        list_element_to_be_processed = stream_context_queue;
-        break;
-      } else {
-        stream_context_queue = stream_context_queue->next;
-
-      }
-    }
   }
   GST_OBJECT_UNLOCK(quicsrc);
 
-  // Create buffer from stream context
-  stream_to_be_processed = list_element_to_be_processed->data;
-
-  *outbuf = gst_buffer_new_and_alloc(stream_to_be_processed->offset);
+  *outbuf = gst_buffer_new_and_alloc(quicsrc->stream_context->offset);
 
   gst_buffer_map (*outbuf, &map, GST_MAP_READWRITE);
 
-  memcpy(map.data, stream_to_be_processed->buffer, stream_to_be_processed->offset);
+  memcpy(map.data, quicsrc->stream_context->buffer, quicsrc->stream_context->offset);
 
   gst_buffer_unmap(*outbuf, &map);
-  gst_buffer_resize(*outbuf, 0, stream_to_be_processed->offset);
+  gst_buffer_resize(*outbuf, 0, quicsrc->stream_context->offset);
 
-  // Free resources from stream context
-  free(stream_to_be_processed->buffer);
-  free(stream_to_be_processed);
-  g_list_free (list_element_to_be_processed);
+  // We can overwrite current buffer data now that it has been passed on
+  quicsrc->stream_context->offset = 0;
+
+  // If the buffer filled, we could have requested that reading be stopped.
+  // In that case we should signal that we are ready to begin reading again.
+  lsquic_stream_wantread(quicsrc->stream, 1);
 
 
-
-  GST_DEBUG_OBJECT (quicsrc, "Read full rtp packet from stream %u. Pushing buffer of size %lu", stream_to_be_processed->streamID, gst_buffer_get_size(*outbuf));
+  GST_DEBUG_OBJECT (quicsrc, "Pushing buffer of size %lu", gst_buffer_get_size(*outbuf));
 
   return GST_FLOW_OK;
 }

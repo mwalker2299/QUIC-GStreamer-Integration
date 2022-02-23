@@ -1,5 +1,5 @@
 /* GStreamer
- * Copyright (C) 2021 FIXME <fixme@example.com>
+ * Copyright (C) 2021 Matthew Walker <mjwalker2299@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -19,14 +19,15 @@
 /**
  * SECTION:element-gstquicsink
  *
- * The quicsink element does FIXME stuff.
+ * The quicsink element acts as a QUIC server. This element operates similar to a tcp implementation
+ * as one stream is used for all data sent.
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -v fakesrc ! quicsink ! FIXME ! fakesink
+ * gst-launch-1.0 -v filesrc location=\"/home/matt/Documents/zoom_recording.mp4\" ! qtdemux name=demux  demux.video_0  ! rtph264pay seqnum-offset=0 ! quicsink host={addr} port=5000 keylog={keylog}"
  * ]|
- * FIXME Describe what the pipeline does.
+ * Send data over the network using the QUIC protocol
  * </refsect2>
  */
 
@@ -39,7 +40,8 @@
 #include "gstquicsink.h"
 #include "gstquicutils.h"
 
-//FIXME: Theses are test defaults and should be updated to a more appropriate value
+//FIXME: Theses are test defaults and should be updated to a more appropriate value before code is adapted for general use
+//FIXME: Move defines to gstquicutils.h?
 #define QUIC_SERVER 1
 #define QUIC_DEFAULT_PORT 12345
 #define QUIC_DEFAULT_HOST "127.0.0.1"
@@ -84,7 +86,7 @@ static gboolean gst_quicsink_stop (GstBaseSink * sink);
 static gboolean gst_quicsink_unlock (GstBaseSink * sink);
 static gboolean gst_quicsink_unlock_stop (GstBaseSink * sink);
 // static gboolean gst_quicsink_query (GstBaseSink * sink, GstQuery * query);
-// static gboolean gst_quicsink_event (GstBaseSink * sink, GstEvent * event);
+static gboolean gst_quicsink_event (GstBaseSink * sink, GstEvent * event);
 // static GstFlowReturn gst_quicsink_wait_event (GstBaseSink * sink,
 //     GstEvent * event);
 // static GstFlowReturn gst_quicsink_prepare (GstBaseSink * sink,
@@ -206,7 +208,7 @@ gst_quicsink_class_init (GstQuicsinkClass * klass)
   base_sink_class->unlock = GST_DEBUG_FUNCPTR (gst_quicsink_unlock);
   base_sink_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_quicsink_unlock_stop);
   // base_sink_class->query = GST_DEBUG_FUNCPTR (gst_quicsink_query);
-  // base_sink_class->event = GST_DEBUG_FUNCPTR (gst_quicsink_event);
+  base_sink_class->event = GST_DEBUG_FUNCPTR (gst_quicsink_event);
   // base_sink_class->wait_event = GST_DEBUG_FUNCPTR (gst_quicsink_wait_event);
   // base_sink_class->prepare = GST_DEBUG_FUNCPTR (gst_quicsink_prepare);
   // base_sink_class->prepare_list = GST_DEBUG_FUNCPTR (gst_quicsink_prepare_list);
@@ -354,7 +356,7 @@ static lsquic_stream_ctx_t *gst_quicsink_on_new_stream (void *stream_if_ctx, str
 {
     GstQuicsink *quicsink = GST_QUICSINK (stream_if_ctx);
     GST_DEBUG_OBJECT(quicsink, "MW: created new stream");
-    lsquic_stream_wantwrite(stream, 1);
+    quicsink->stream = stream;
     return (void *) quicsink;
 }
 
@@ -439,8 +441,8 @@ static void gst_quicsink_on_write (struct lsquic_stream *stream, lsquic_stream_c
       GST_DEBUG_OBJECT(quicsink, "MW: wrote %ld bytes to stream", bytes_written);
       if (quicsink->stream_ctx.offset == buffer_size) 
       {
-          GST_DEBUG_OBJECT(quicsink, "MW: wrote full buffer to stream (%lu bytes), closing stream", buffer_size);
-          lsquic_stream_close(stream);
+          GST_DEBUG_OBJECT(quicsink, "MW: wrote full buffer to stream (%lu bytes)", buffer_size);
+          lsquic_stream_wantwrite(quicsink->stream, 0);
       }
     }
     else if (bytes_written < 0)
@@ -470,6 +472,7 @@ gst_quicsink_init (GstQuicsink * quicsink)
   quicsink->connection_active = FALSE;
   quicsink->engine = NULL;
   quicsink->connection = NULL;
+  quicsink->stream = NULL;
   quicsink->ssl_ctx = NULL;
   
   memset(&quicsink->stream_ctx, 0, sizeof(quicsink->stream_ctx));
@@ -570,6 +573,9 @@ gst_quicsink_dispose (GObject * object)
   GstQuicsink *quicsink = GST_QUICSINK (object);
 
   GST_DEBUG_OBJECT (quicsink, "dispose");
+
+  lsquic_stream_close(quicsink->stream);
+  lsquic_conn_close(quicsink->connection);
 
   /* clean up as possible.  may be called multiple times */
 
@@ -814,6 +820,9 @@ gst_quicsink_start (GstBaseSink * sink)
 
   g_timeout_add(1, tick_connection, quicsink);
 
+  // Since we only have a single stream, we can set it up now
+  lsquic_conn_make_stream(quicsink->connection);
+
   return TRUE;
 }
 
@@ -867,16 +876,24 @@ gst_quicsink_unlock_stop (GstBaseSink * sink)
 //   return TRUE;
 // }
 
-// /* notify subclass of event */
-// static gboolean
-// gst_quicsink_event (GstBaseSink * sink, GstEvent * event)
-// {
-//   GstQuicsink *quicsink = GST_QUICSINK (sink);
+/* notify subclass of event */
+static gboolean
+gst_quicsink_event (GstBaseSink * sink, GstEvent * event)
+{
+  GstQuicsink *quicsink = GST_QUICSINK (sink);
 
-//   GST_DEBUG_OBJECT (quicsink, "event");
+  if (GST_EVENT_EOS == event->type) {
+    GST_DEBUG_OBJECT(quicsink, "GOT EOS EVENT");
+    lsquic_stream_close(quicsink->stream);
+  }
 
-//   return TRUE;
-// }
+  GST_DEBUG_OBJECT(quicsink, "Chaining up");
+
+  gboolean ret = GST_BASE_SINK_CLASS (gst_quicsink_parent_class)->event(sink,event);
+
+
+  return ret;
+}
 
 // /* wait for eos or gap, subclasses should chain up to parent first */
 // static GstFlowReturn
@@ -945,7 +962,7 @@ gst_quicsink_render (GstBaseSink * sink, GstBuffer * buffer)
   // Simultaneous attempts to process the lsquic connection via read packets will cause 
   // An assertion error within lsquic. So we take the lock to prevent this from happening
   GST_OBJECT_LOCK(quicsink);
-  lsquic_conn_make_stream(quicsink->connection);
+  lsquic_stream_wantwrite(quicsink->stream, 1);
 
   while (quicsink->stream_ctx.offset != quicsink->stream_ctx.buffer_size) 
   {

@@ -1,3 +1,6 @@
+#ifndef GST_QUIC_UTILS_H
+#define GST_QUIC_UTILS_H
+
 
 #include <stddef.h>
 #include <stdio.h>
@@ -45,6 +48,13 @@ typedef union server_addr {
   struct sockaddr_in6 addr6;
 } server_addr_u;
 
+struct server_stream_ctx
+{
+    gsize   offset;           /* Number of bytes written to stream */
+    gsize   buffer_size;
+    GstBuffer* buffer;        /* GstBuffer received from upstream */
+};
+
 gint gst_quic_log_buf (void *ctx, const char *buf, size_t len);
 
 gboolean gst_quic_set_addr(gchar* host, guint16 port, server_addr_u *server_addr);
@@ -59,3 +69,5 @@ void gst_quic_read_ancillary_data (struct msghdr *msg, struct sockaddr_storage *
 void gst_quic_read_packets (GstElement * quic_element, gint socket, lsquic_engine_t *engine, struct sockaddr_storage local_address);
 
 const struct lsquic_logger_if logger_if;
+
+#endif

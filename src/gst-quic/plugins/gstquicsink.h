@@ -1,5 +1,5 @@
 /* GStreamer
- * Copyright (C) 2021 FIXME <fixme@example.com>
+ * Copyright (C) 2021 Matthew Walker <mjwalker2299@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -22,6 +22,7 @@
 
 #include <gst/gst.h>
 #include <gst/base/gstbasesink.h>
+#include "gstquicutils.h"
 
 #include <stddef.h>
 #include <stdio.h>
@@ -52,14 +53,6 @@ G_BEGIN_DECLS
 typedef struct _GstQuicsink GstQuicsink;
 typedef struct _GstQuicsinkClass GstQuicsinkClass;
 
-
-struct server_stream_ctx
-{
-    gsize   offset;           /* Number of bytes written to stream */
-    gsize   buffer_size;
-    GstBuffer* buffer;        /* GstBuffer received from upstream */
-};
-
 struct _GstQuicsink
 {
   GstBaseSink parent;
@@ -87,8 +80,9 @@ struct _GstQuicsink
   gboolean connection_active;
   lsquic_engine_t *engine;
   lsquic_conn_t *connection;
+  lsquic_stream_t *stream;
 
-  /* Test stream context*/
+  /* stream context */
   struct server_stream_ctx stream_ctx;
 };
 

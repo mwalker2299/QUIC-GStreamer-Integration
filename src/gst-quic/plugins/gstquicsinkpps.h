@@ -22,6 +22,7 @@
 
 #include <gst/gst.h>
 #include <gst/base/gstbasesink.h>
+#include "gstquicutils.h"
 
 #include <stddef.h>
 #include <stdio.h>
@@ -52,14 +53,6 @@ G_BEGIN_DECLS
 typedef struct _GstQuicsinkpps GstQuicsinkpps;
 typedef struct _GstQuicsinkppsClass GstQuicsinkppsClass;
 
-
-struct server_stream_ctx
-{
-    gsize   offset;           /* Number of bytes written to stream */
-    gsize   buffer_size;
-    GstBuffer* buffer;        /* GstBuffer received from upstream */
-};
-
 struct _GstQuicsinkpps
 {
   GstBaseSink parent;
@@ -88,7 +81,7 @@ struct _GstQuicsinkpps
   lsquic_engine_t *engine;
   lsquic_conn_t *connection;
 
-  /* Test stream context*/
+  /* stream context */
   struct server_stream_ctx stream_ctx;
 };
 

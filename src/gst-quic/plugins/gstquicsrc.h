@@ -1,5 +1,5 @@
 /* GStreamer
- * Copyright (C) 2021 FIXME <fixme@example.com>
+ * Copyright (C) 2021 Matthew Walker<mjwalker2299@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -48,12 +48,11 @@ G_BEGIN_DECLS
 typedef struct _GstQuicsrc GstQuicsrc;
 typedef struct _GstQuicsrcClass GstQuicsrcClass;
 
-struct stream_ctx
+struct single_stream_ctx
 {
     gsize   offset;           /* Number of bytes read from stream */
     gchar* buffer;
-    gboolean ready;           /* set when stream has been read to completion */
-    guint streamID;
+    gboolean finished;           /* set when stream has been read to completion */
 };
 
 struct _GstQuicsrc
@@ -61,8 +60,6 @@ struct _GstQuicsrc
   GstPushSrc parent;
 
   gint socket;
-
-  guint stream_count;
 
   GstCaps *caps;
 
@@ -80,9 +77,10 @@ struct _GstQuicsrc
   gboolean connection_active;
   lsquic_engine_t *engine;
   lsquic_conn_t *connection;
+  lsquic_stream_t *stream;
 
-  /* hold stream contexts */
-  GList* stream_context_queue;
+  /* hold stream context */
+  struct single_stream_ctx *stream_context;
 
 };
 

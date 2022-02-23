@@ -46,6 +46,8 @@
 #endif
 
 #include <gst/gst.h>
+#include "gstquicsrc.h"
+#include "gstquicsink.h"
 #include "gstquicsrcpps.h"
 #include "gstquicsinkpps.h"
 #include "gsttcpsink.h"
@@ -54,6 +56,14 @@
 static gboolean
 plugin_init (GstPlugin * plugin)
 {
+  if (!gst_element_register (plugin, "quicsrc", GST_RANK_NONE, GST_TYPE_QUICSRC)){
+    return FALSE;
+  }
+
+  if (!gst_element_register (plugin, "quicsink", GST_RANK_NONE, GST_TYPE_QUICSINK)){
+    return FALSE;
+  } 
+
   if (!gst_element_register (plugin, "quicsrcpps", GST_RANK_NONE, GST_TYPE_QUICSRCPPS)){
     return FALSE;
   }
