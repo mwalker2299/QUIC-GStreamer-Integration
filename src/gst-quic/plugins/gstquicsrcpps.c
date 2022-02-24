@@ -172,7 +172,6 @@ tick_connection (gpointer context)
 
   GST_OBJECT_LOCK(quicsrcpps);
   if (quicsrcpps->engine) {
-    GST_DEBUG_OBJECT(quicsrcpps, "ticking connection");
     gst_quic_read_packets(GST_ELEMENT(quicsrcpps), quicsrcpps->socket, quicsrcpps->engine, quicsrcpps->local_address);
     GST_OBJECT_UNLOCK(quicsrcpps);
     return TRUE;

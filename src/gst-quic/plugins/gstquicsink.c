@@ -233,7 +233,6 @@ tick_connection (gpointer context)
 
   if (quicsink->engine) {
     tickable = lsquic_engine_earliest_adv_tick(quicsink->engine, &diff);
-    GST_DEBUG_OBJECT(quicsink, "Connection %s tickable. Diff = %d", tickable ? "is" : "is not", diff);
     gst_quic_read_packets(GST_ELEMENT(quicsink), quicsink->socket, quicsink->engine, quicsink->local_address);
 
     GST_OBJECT_UNLOCK(quicsink);
