@@ -312,6 +312,18 @@ gst_tcpsrc_start (GstBaseSrc * src)
     return FALSE;
   }
 
+  int activate = 1;
+  if (0 != setsockopt(tcpsrc->socket, IPPROTO_TCP, TCP_NODELAY, &activate, sizeof(activate))) {
+    GST_ELEMENT_ERROR (tcpsrc, RESOURCE, OPEN_READ, (NULL),
+        ("Failed to add enable TCP_NODELAY using setsockopt"));
+    return FALSE;
+  }
+  if (0 != setsockopt(tcpsrc->socket, IPPROTO_TCP, TCP_QUICKACK, &activate, sizeof(activate))) {
+    GST_ELEMENT_ERROR (tcpsrc, RESOURCE, OPEN_READ, (NULL),
+        ("Failed to add enable TCP_QUICKACK using setsockopt"));
+    return FALSE;
+  }
+
   server_addrlen = sizeof(server_addr);
 
   // Connect to server

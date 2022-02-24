@@ -333,6 +333,19 @@ gst_tcpsink_start (GstBaseSink * sink)
     return FALSE;
   }
 
+  int activate = 1;
+  if (0 != setsockopt(tcpsink->socket, IPPROTO_TCP, TCP_NODELAY, &activate, sizeof(activate))) {
+    GST_ELEMENT_ERROR (tcpsink, RESOURCE, OPEN_READ, (NULL),
+        ("Failed to add enable TCP_NODELAY using setsockopt"));
+    return FALSE;
+  }
+  if (0 != setsockopt(tcpsink->socket, IPPROTO_TCP, TCP_QUICKACK, &activate, sizeof(activate))) {
+    GST_ELEMENT_ERROR (tcpsink, RESOURCE, OPEN_READ, (NULL),
+        ("Failed to add enable TCP_QUICKACK using setsockopt"));
+    return FALSE;
+  }
+
+
   // Bind socket to address of our server and save local address in a sockaddr_storage struct.
   // sockaddr_storage is used as it is big enough to allow IPV6 addresses to be stored.
   server_addrlen = sizeof(server_addr);
