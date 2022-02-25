@@ -357,3 +357,23 @@ No work was done during week 9, 10 and part of 11 as I was focused on coursework
 
 * *0.50 hours* Meeting with Colin
 * *0.25 hours* Added minutes and plan to appropriate meeting file
+
+
+### 24th FEB 2022
+
+* *2.00 hours* While reviewing the results from the dry run, I noticed greater delays than expected. I spent some time trying to identify the cause of delays and improve performance. 
+  - The first step was identifying why tcp had a greater app latency than the other implementations. This was due to the smaller rtp packets being delayed while tcp waited for more data to send. Enabling TCP_NODELAY and TCP_QUICACK solved this.
+  - The app latency for I-frames in the big buck bunny test file is much larger than for the zoom recording. This is due to the I-frames being significantly larger. I considered replacing the BBB video with a zoom recording. However, as i would prefer to use a common test video, I instead opted to increase the bandwidth.
+
+* *8.00 hours* Looked into reworking the pipeline so that it encoded data before sending it to more accurately model a real streaming application. This took some finetuning before it would work correctly, however the pipelines are now updated and I have identified the necessary changes to the gstreamer analysis scripts.
+
+
+### 25th FEB 2022
+
+* *1.50 hours* During testing, a new issue was revealed The first was that the pcaps for the quic streams used up far too much space. It appears that the ssl secrets are logged in time to decrypt the first packet, so we no longer need to store the full packet capture. I added some extra details about the stream (ID, length, offset fin) just in case these are necessary for future analysis. I also went to PC world to pick up an external ssd. By moving the test results to this SSD, we should have no risk of running out of diskspace.
+* *2.50 hours* Despite working fine previously, the Single stream quic implementation is now failing frequently tests. There was no obvious cause for this in the logs but the pipeline appeared to stall. It was difficult to determine the cause immediately as neither gdb nor the logs were providing much info. In the end, I looked into the possibility of a multithreading issue between gstreamer and lsquic. This was the problem and I have now mended this.
+* *5.00 hours* I noticed a delay in the higher latency runs for the quic implementations. 
+  - On the single stream implementation, this was caused by a small maximum stream flow control window. On higher latencies, the frequent stream_blocked messages took a significant amount of time to arrive causing a delay when writing at the server. Setting the max stream flow control window to a higher value eliminated this issue.
+  - On the packet per stream implementation, there were frequent delays caused by the maximum stream count being reach repeatedly. Setting a higher initial stream maximum and increasing the rate at which the stream maximum could grow fixed this issue.
+
+
