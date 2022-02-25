@@ -13,6 +13,7 @@ import network
 
 def streamServerThread(serverNode, cmd, timeout, event, log_path):
   print("Stream Server: " + cmd)
+  run_time = 0
 
   # To account for high loss scenarios where 
   # initial connection attempt fails to reach
@@ -29,6 +30,7 @@ def streamServerThread(serverNode, cmd, timeout, event, log_path):
   cmd_pid = serverNode.cmd("echo $!")
 
   sleep(timeout)
+  run_time += timeout
 
   cmd_done = serverNode.cmd("kill -0 " + cmd_pid)
   print(cmd_done)
@@ -37,9 +39,25 @@ def streamServerThread(serverNode, cmd, timeout, event, log_path):
     print("Stream Server: process terminated within timeout.")
     serverNode.cmd("touch " + os.path.join(log_path,"Success"))
   else:
-    print("Stream Server: Process still running, killing process " + cmd_pid + " manually")
-    serverNode.cmd('kill ' + cmd_pid)
-    serverNode.cmd("touch " + os.path.join(log_path,"Failure"))
+    while (1):
+
+     print("Stream Server: Process still running, allowing more time")
+     sleep(timeout/2)
+     run_time += timeout/2
+
+     cmd_done = serverNode.cmd("kill -0 " + cmd_pid)
+     print(cmd_done)
+
+     if "No such process" in cmd_done:
+      print("Stream Server: process terminated after " + str(run_time) + " seconds.")
+      serverNode.cmd("touch " + os.path.join(log_path,"Success"))
+      break
+     elif run_time >= 3*timeout:
+       print("Stream Server: Process still running after " + str(run_time) + " seconds, killing process " + cmd_pid + " manually")
+       serverNode.cmd('kill ' + cmd_pid)
+       serverNode.cmd("touch " + os.path.join(log_path,"Failure"))
+       break
+
 
   # We set the event when done, allowing the other threads to complete
   event.set()
