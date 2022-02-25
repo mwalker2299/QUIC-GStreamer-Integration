@@ -5,28 +5,28 @@
       "stream_server": "gst-launch-1.0 -v filesrc location=\"/home/matt/Documents/BBB_dec.raw\" ! video/x-raw, format=I420, width=1280, height=720, interlace-mode=progressive, multiview-mode=mono, multiview-flags=0:ffffffff:/right-view-first/left-flipped/left-flopped/right-flipped/right-flopped/half-aspect/mixed-mono, pixel-aspect-ratio=1/1, chroma-site=mpeg2, colorimetry=bt709, framerate=24/1  !  queue ! rawvideoparse format=i420  width=1280  height=720  pixel-aspect-ratio=1/1  framerate=24/1 ! queue ! x264enc speed-preset=ultrafast tune=zerolatency threads=0 key-int-max=50 ! queue ! rtph264pay seqnum-offset=0 ! udpsink host={addr} port=5000", 
       "stream_client": "gst-launch-1.0 udpsrc address={addr} port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96, seqnum-base=(int)0\" ! rtpjitterbuffer latency={buffer_delay} ! rtph264depay ! h264parse ! queue  ! decodebin ! videoconvert !  fakesink -v",
       "ct_client": "ping -c5 {addr}",
-      "run_time": "120",
+      "run_time": "60",
       "logging": "\"*:3,*udp*:6,*rtp*:6,*enc*:6,*libav*:6\""},
       "QUIC_PPS": {
         "name": "QUIC_PPS", 
         "stream_server": "gst-launch-1.0 -v filesrc location=\"/home/matt/Documents/BBB_dec.raw\" ! video/x-raw, format=I420, width=1280, height=720, interlace-mode=progressive, multiview-mode=mono, multiview-flags=0:ffffffff:/right-view-first/left-flipped/left-flopped/right-flipped/right-flopped/half-aspect/mixed-mono, pixel-aspect-ratio=1/1, chroma-site=mpeg2, colorimetry=bt709, framerate=24/1  !  queue ! rawvideoparse format=i420  width=1280  height=720  pixel-aspect-ratio=1/1  framerate=24/1 ! queue ! x264enc speed-preset=ultrafast tune=zerolatency threads=0 key-int-max=50 ! queue ! rtph264pay seqnum-offset=0 ! quicsinkpps host={addr} port=5000 keylog={keylog}", 
         "stream_client": "gst-launch-1.0 quicsrcpps host={addr} port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96, seqnum-base=(int)0\" ! rtpjitterbuffer latency={buffer_delay} ! rtph264depay ! h264parse ! queue ! decodebin ! videoconvert !  fakesink -v",
         "ct_client": "ping -c5 {addr}",
-        "run_time": "120",
+        "run_time": "60",
         "logging": "\"*:3,*quic*:6,*rtp*:6,*enc*:6,*libav*:6\""},
       "QUIC_SS": {
         "name": "QUIC_SS", 
         "stream_server": "gst-launch-1.0 -v filesrc location=\"/home/matt/Documents/BBB_dec.raw\" ! video/x-raw, format=I420, width=1280, height=720, interlace-mode=progressive, multiview-mode=mono, multiview-flags=0:ffffffff:/right-view-first/left-flipped/left-flopped/right-flipped/right-flopped/half-aspect/mixed-mono, pixel-aspect-ratio=1/1, chroma-site=mpeg2, colorimetry=bt709, framerate=24/1  !  queue ! rawvideoparse format=i420  width=1280  height=720  pixel-aspect-ratio=1/1  framerate=24/1 ! queue ! x264enc speed-preset=ultrafast tune=zerolatency threads=0 key-int-max=50 ! queue ! rtph264pay seqnum-offset=0 ! rtpstreampay ! quicsink host={addr} port=5000 keylog={keylog}", 
         "stream_client": "gst-launch-1.0 quicsrc host={addr} port=5000 caps=\"application/x-rtp-stream, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96, seqnum-base=(int)0\" ! rtpstreamdepay ! rtpjitterbuffer latency={buffer_delay} ! rtph264depay ! h264parse ! queue ! decodebin ! videoconvert !  fakesink -v",
         "ct_client": "ping -c5 {addr}",
-        "run_time": "120",
+        "run_time": "60",
         "logging": "\"*:3,*quic*:6,*rtp*:6,*enc*:6,*libav*:6\""},
       "TCP": {
         "name": "TCP", 
         "stream_server": "gst-launch-1.0 -v filesrc location=\"/home/matt/Documents/BBB_dec.raw\" ! video/x-raw, format=I420, width=1280, height=720, interlace-mode=progressive, multiview-mode=mono, multiview-flags=0:ffffffff:/right-view-first/left-flipped/left-flopped/right-flipped/right-flopped/half-aspect/mixed-mono, pixel-aspect-ratio=1/1, chroma-site=mpeg2, colorimetry=bt709, framerate=24/1  !  queue ! rawvideoparse format=i420  width=1280  height=720  pixel-aspect-ratio=1/1  framerate=24/1 ! queue ! x264enc speed-preset=ultrafast tune=zerolatency threads=0 key-int-max=50 ! queue ! rtph264pay seqnum-offset=0 ! rtpstreampay ! tcpsink host={addr} port=5000", 
         "stream_client": "gst-launch-1.0 tcpsrc host={addr} port=5000 ! application/x-rtp-stream, media=video, clock-rate=90000, encoding-name=H264, payload=96, seqnum-base=0 ! rtpstreamdepay ! rtpjitterbuffer latency={buffer_delay} ! rtph264depay ! h264parse ! queue ! decodebin ! videoconvert !  fakesink -v",
         "ct_client": "ping -c5 {addr}",
-        "run_time": "120",
+        "run_time": "60",
         "logging": "\"*:3,*tcp*:6,*rtp*:6,*enc*:6,*libav*:6\""}
   }
 }
