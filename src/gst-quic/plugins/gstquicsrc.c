@@ -403,7 +403,6 @@ static lsquic_stream_ctx_t *
 gst_quicsrc_on_new_stream (void *stream_if_ctx, struct lsquic_stream *stream)
 {
     GstQuicsrc *quicsrc = GST_QUICSRC (stream_if_ctx);
-    lsquic_stream_wantread(stream, 1);
 
     quicsrc->stream = stream;
 
@@ -735,10 +734,12 @@ gst_quicsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
 
   // Call read with lock taken as simulatenous calls can lead to an assertion error within lsquic
   GST_OBJECT_LOCK(quicsrc);
+  lsquic_stream_wantread(quicsrc->stream, 1);
   while (quicsrc->stream_context->offset == 0)
   {
     gst_quic_read_packets(GST_ELEMENT(quicsrc), quicsrc->socket, quicsrc->engine, quicsrc->local_address);
   }
+  lsquic_stream_wantread(quicsrc->stream, 0);
   GST_OBJECT_UNLOCK(quicsrc);
 
   *outbuf = gst_buffer_new_and_alloc(quicsrc->stream_context->offset);
@@ -752,10 +753,6 @@ gst_quicsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
 
   // We can overwrite current buffer data now that it has been passed on
   quicsrc->stream_context->offset = 0;
-
-  // If the buffer filled, we could have requested that reading be stopped.
-  // In that case we should signal that we are ready to begin reading again.
-  lsquic_stream_wantread(quicsrc->stream, 1);
 
 
   GST_DEBUG_OBJECT (quicsrc, "Pushing buffer of size %lu", gst_buffer_get_size(*outbuf));
