@@ -524,6 +524,20 @@ gst_quicsrcpps_start (GstBaseSrc * src)
   // Disable delayed acks to improve response to loss
   engine_settings.es_delayed_acks = 0;
 
+  // The max stream flow control window seems to default to 16384.
+  // This ends up causing streams to become blocked frequently, leading
+  // to delays. After experimentation, a value of 524288 was found to be 
+  // large enough that blocks do not occur.
+  engine_settings.es_max_sfcw = 524288;
+
+  // Using the default values (es_max_streams_in = 50, es_init_max_streams_bidi=100), the max number of streams grows at too little a rate
+  // when we are creating a new packet per stream. This results in significant delays
+  // By setting es_max_streams_in and es_init_max_streams_bidi to a higher value, we can avoid this.
+  // Setting es_max_streams_in above 200 seems to cause an error, but setting a higher starting value
+  // using es_init_max_streams_bidi allows lsquic to run without delays due to stream count.
+  engine_settings.es_max_streams_in = 200;
+  engine_settings.es_init_max_streams_bidi = 20000;
+
   // Parse IP address and set port number
   if (!gst_quic_set_addr(quicsrcpps->host, quicsrcpps->port, &server_addr))
   {

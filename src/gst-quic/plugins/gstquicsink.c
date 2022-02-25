@@ -573,8 +573,15 @@ gst_quicsink_dispose (GObject * object)
 
   GST_DEBUG_OBJECT (quicsink, "dispose");
 
-  lsquic_stream_close(quicsink->stream);
-  lsquic_conn_close(quicsink->connection);
+  if (quicsink->stream) {
+    lsquic_stream_close(quicsink->stream);
+    quicsink->stream = NULL;
+  }
+
+  if (quicsink->connection) {
+    lsquic_conn_close(quicsink->connection);
+    quicsink->stream = NULL;
+  }
 
   /* clean up as possible.  may be called multiple times */
 
@@ -704,6 +711,12 @@ gst_quicsink_start (GstBaseSink * sink)
 
   // Disable delayed acks to improve response to loss
   engine_settings.es_delayed_acks = 0;
+
+  // The max stream flow control window seems to default to 16384.
+  // This ends up causing streams to become blocked frequently, leading
+  // to delays. After experimentation, a value of 524288 was found to be 
+  // large enough that blocks do not occur.
+  engine_settings.es_max_sfcw = 524288;
 
   // Parse IP address and set port number
   if (!gst_quic_set_addr(quicsink->host, quicsink->port, &server_addr))

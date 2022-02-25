@@ -538,6 +538,12 @@ gst_quicsrc_start (GstBaseSrc * src)
   // Disable delayed acks to improve response to loss
   engine_settings.es_delayed_acks = 0;
 
+  // The max stream flow control window seems to default to 16384.
+  // This ends up causing streams to become blocked frequently, leading
+  // to delays. After experimentation, a value of 524288 was found to be 
+  // large enough that blocks do not occur.
+  engine_settings.es_max_sfcw = 524288;
+
   // Parse IP address and set port number
   if (!gst_quic_set_addr(quicsrc->host, quicsrc->port, &server_addr))
   {
