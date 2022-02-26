@@ -44,6 +44,7 @@
 #define QUIC_DEFAULT_PORT 12345
 #define QUIC_DEFAULT_HOST "127.0.0.1"
 #define QUIC_DEFAULT_LOG_PATH "/home/matt/Documents/lsquic-client-log.txt"
+#define READ_BUFFER_SIZE 1500
 
 GST_DEBUG_CATEGORY_STATIC (gst_quicsrcpps_debug_category);
 #define GST_CAT_DEFAULT gst_quicsrcpps_debug_category
@@ -396,7 +397,7 @@ gst_quicsrcpps_on_new_stream (void *stream_if_ctx, struct lsquic_stream *stream)
     lsquic_stream_wantread(stream, 1);
 
     struct stream_ctx* stream_ctx = malloc(sizeof(struct stream_ctx));
-    stream_ctx->buffer = malloc(10000); //FIXME: Does this need to be so large, we are only expecting 1 rtp packet per stream after all
+    stream_ctx->buffer = malloc(READ_BUFFER_SIZE);
     stream_ctx->offset = 0;
     stream_ctx->ready = FALSE;
     stream_ctx->streamID = quicsrcpps->stream_count;
