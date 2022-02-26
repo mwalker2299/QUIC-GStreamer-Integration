@@ -42,8 +42,8 @@ def streamServerThread(serverNode, cmd, timeout, event, log_path):
     while (1):
 
      print("Stream Server: Process still running, allowing more time")
-     sleep(timeout/2)
-     run_time += timeout/2
+     sleep(timeout/5)
+     run_time += timeout/5
 
      cmd_done = serverNode.cmd("kill -0 " + cmd_pid)
      print(cmd_done)
