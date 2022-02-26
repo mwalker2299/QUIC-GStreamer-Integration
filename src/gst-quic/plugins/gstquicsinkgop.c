@@ -717,6 +717,13 @@ gst_quicsinkgop_start (GstBaseSink * sink)
   engine_settings.es_max_streams_in = 200;
   engine_settings.es_init_max_streams_bidi = 20000;
 
+  // The initial stream flow control offset on the client side is 16384.
+  // However, the server appears to begin with a much higher max send offset
+  // It should be zero, but instead it's 6291456. We can force lsquic to behave
+  // by setting the following to 16384.
+  engine_settings.es_init_max_stream_data_bidi_local = 16384;
+  engine_settings.es_init_max_stream_data_bidi_local = 16384;
+
   // Parse IP address and set port number
   if (!gst_quic_set_addr(quicsinkgop->host, quicsinkgop->port, &server_addr))
   {

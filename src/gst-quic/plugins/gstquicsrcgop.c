@@ -531,6 +531,13 @@ gst_quicsrcgop_start (GstBaseSrc * src)
   // large enough that blocks do not occur.
   engine_settings.es_max_sfcw = 524288;
 
+  // The initial stream flow control offset on the client side is 16384.
+  // However, the server appears to begin with a much higher max send offset
+  // It should be zero, but instead it's 6291456. We can force lsquic to behave
+  // by setting the following to 16384.
+  engine_settings.es_init_max_stream_data_bidi_local = 16384;
+  engine_settings.es_init_max_stream_data_bidi_local = 16384;
+
   // Using the default values (es_max_streams_in = 50, es_init_max_streams_bidi=100), the max number of streams grows at too little a rate
   // when we are creating a new packet per stream. This results in significant delays
   // By setting es_max_streams_in and es_init_max_streams_bidi to a higher value, we can avoid this.

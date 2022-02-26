@@ -544,6 +544,13 @@ gst_quicsrc_start (GstBaseSrc * src)
   // large enough that blocks do not occur.
   engine_settings.es_max_sfcw = 524288;
 
+  // The initial stream flow control offset on the client side is 16384.
+  // However, the server appears to begin with a much higher max send offset
+  // It should be zero, but instead it's 6291456. We can force lsquic to behave
+  // by setting the following to 16384.
+  engine_settings.es_init_max_stream_data_bidi_local = 16384;
+  engine_settings.es_init_max_stream_data_bidi_local = 16384;
+
   // Parse IP address and set port number
   if (!gst_quic_set_addr(quicsrc->host, quicsrc->port, &server_addr))
   {
