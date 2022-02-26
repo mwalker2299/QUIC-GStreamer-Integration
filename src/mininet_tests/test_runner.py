@@ -148,6 +148,9 @@ def main():
                     # Run test (We set timeout to our streams runtime + 5 seconds to account for possibility of loss causing increased run_time)
                     test_loop.run_test(test_params, stream_server_command, stream_client_command, ct_command, int(run_time)+5, protocol_name, log_path, log_level)
             
+    # Mark test run as complete:
+    done_file_marker = os.path.join(results_path, "DONE")
+    open(done_file_marker, 'a').close()
 
     # call analyser to analyse raw results
     return analyser.analyse(results_path)
