@@ -48,8 +48,25 @@ def init_argparse():
 
 def create_directory(path_to_parent, dir_name):
   new_dir_path = os.path.join(path_to_parent, dir_name)
-  os.mkdir(new_dir_path)
+  if (not os.path.exists(new_dir_path)):
+    os.mkdir(new_dir_path)
   return new_dir_path
+
+def test_already_run(path_to_parent, dir_name):
+  dir_path = os.path.join(path_to_parent, dir_name)
+  if os.path.exists(dir_path):
+    filenames = os.listdir(dir_path)
+    if "Failure" in filenames or "Success" in filenames:
+      print(filenames)
+      return True
+    else:
+      shutil.rmtree(dir_path)
+      return False
+  else:
+    return False
+  
+    
+
 
 def main():
     # Setup arg parser and parse cmdline args
@@ -68,13 +85,9 @@ def main():
     param_config_file = open(param_config_path, "r")
     param_config = json.load(param_config_file)
 
-    # Create results directory. (We first remove the directory to clear the files if it already exists)
-    try:
-      shutil.rmtree(results_path)
-    except Exception:
-      pass
-
-    os.mkdir(results_path)
+    # Create results director if it does not already exist.
+    if (not os.path.exists(results_path)):
+      os.mkdir(results_path)
 
     # For each iteration, test each possible param combination. Repeat for specified number of iters. 
     # Before the parameters and logging path are passed to the test loop, we must create the directory structure which will hold the results.
@@ -85,8 +98,7 @@ def main():
       run_time              = implementation['run_time']
       protocol_name         = implementation['name']
       log_level             = implementation['logging']
-      implementation_results_path = os.path.join(results_path, protocol_name)
-      os.mkdir(implementation_results_path)
+      implementation_results_path = create_directory(results_path, protocol_name)
 
       test_params = {}
       for delay in param_config['parameters']['delay']:
@@ -127,6 +139,10 @@ def main():
 
                   for iteration in range(iterations):
                     iteration_descriptor = "Iteration"+str(iteration)
+                    
+                    if test_already_run(cross_traffic_results_path, iteration_descriptor):
+                      print(os.path.join(cross_traffic_results_path, iteration_descriptor) + " has already run. Skipping...")
+                      continue
                     log_path = create_directory(cross_traffic_results_path, iteration_descriptor)
 
                     # Run test (We set timeout to our streams runtime + 5 seconds to account for possibility of loss causing increased run_time)
