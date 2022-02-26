@@ -50,6 +50,8 @@
 #include "gstquicsink.h"
 #include "gstquicsrcpps.h"
 #include "gstquicsinkpps.h"
+#include "gstquicsrcgop.h"
+#include "gstquicsinkgop.h"
 #include "gsttcpsink.h"
 #include "gsttcpsrc.h"
 
@@ -69,6 +71,14 @@ plugin_init (GstPlugin * plugin)
   }
 
   if (!gst_element_register (plugin, "quicsinkpps", GST_RANK_NONE, GST_TYPE_QUICSINKPPS)){
+    return FALSE;
+  } 
+
+  if (!gst_element_register (plugin, "quicsrcgop", GST_RANK_NONE, GST_TYPE_QUICSRCGOP)){
+    return FALSE;
+  }
+
+  if (!gst_element_register (plugin, "quicsinkgop", GST_RANK_NONE, GST_TYPE_QUICSINKGOP)){
     return FALSE;
   } 
 

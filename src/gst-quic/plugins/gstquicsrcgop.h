@@ -17,8 +17,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef _GST_QUICSRCPPS_H_
-#define _GST_QUICSRCPPS_H_
+#ifndef _GST_QUICSRCGOP_H_
+#define _GST_QUICSRCGOP_H_
 
 #include <gst/gst.h>
 #include <gst/base/gstpushsrc.h>
@@ -39,16 +39,16 @@
 
 G_BEGIN_DECLS
 
-#define GST_TYPE_QUICSRCPPS   (gst_quicsrcpps_get_type())
-#define GST_QUICSRCPPS(obj)   (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_QUICSRCPPS,GstQuicsrcpps))
-#define GST_QUICSRCPPS_CLASS(klass)   (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_QUICSRCPPS,GstQuicsrcppsClass))
-#define GST_IS_QUICSRCPPS(obj)   (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_QUICSRCPPS))
-#define GST_IS_QUICSRCPPS_CLASS(obj)   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_QUICSRCPPS))
+#define GST_TYPE_QUICSRCGOP   (gst_quicsrcgop_get_type())
+#define GST_QUICSRCGOP(obj)   (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_QUICSRCGOP,GstQuicsrcgop))
+#define GST_QUICSRCGOP_CLASS(klass)   (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_QUICSRCGOP,GstQuicsrcgopClass))
+#define GST_IS_QUICSRCGOP(obj)   (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_QUICSRCGOP))
+#define GST_IS_QUICSRCGOP_CLASS(obj)   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_QUICSRCGOP))
 
-typedef struct _GstQuicsrcpps GstQuicsrcpps;
-typedef struct _GstQuicsrcppsClass GstQuicsrcppsClass;
+typedef struct _GstQuicsrcgop GstQuicsrcgop;
+typedef struct _GstQuicsrcgopClass GstQuicsrcgopClass;
 
-struct _GstQuicsrcpps
+struct _GstQuicsrcgop
 {
   GstPushSrc parent;
 
@@ -78,12 +78,12 @@ struct _GstQuicsrcpps
 
 };
 
-struct _GstQuicsrcppsClass
+struct _GstQuicsrcgopClass
 {
   GstPushSrcClass parent_class;
 };
 
-GType gst_quicsrcpps_get_type (void);
+GType gst_quicsrcgop_get_type (void);
 
 G_END_DECLS
 

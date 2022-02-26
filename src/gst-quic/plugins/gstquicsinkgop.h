@@ -1,5 +1,5 @@
 /* GStreamer
- * Copyright (C) 2021 Matthew Walker<mjwalker2299@gmail.com>
+ * Copyright (C) 2021 Matthew Walker <mjwalker2299@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -17,11 +17,12 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef _GST_QUICSRCPPS_H_
-#define _GST_QUICSRCPPS_H_
+#ifndef _GST_QUICSINKGOP_H_
+#define _GST_QUICSINKGOP_H_
 
 #include <gst/gst.h>
-#include <gst/base/gstpushsrc.h>
+#include <gst/base/gstbasesink.h>
+#include "gstquicutils.h"
 
 #include <stddef.h>
 #include <stdio.h>
@@ -35,35 +36,42 @@
 #include <sys/socket.h>
 #include <fcntl.h>
 
+#include <openssl/pem.h>
+#include <openssl/x509.h>
+#include <openssl/ssl.h>
+
 #include <lsquic.h>
 
 G_BEGIN_DECLS
 
-#define GST_TYPE_QUICSRCPPS   (gst_quicsrcpps_get_type())
-#define GST_QUICSRCPPS(obj)   (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_QUICSRCPPS,GstQuicsrcpps))
-#define GST_QUICSRCPPS_CLASS(klass)   (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_QUICSRCPPS,GstQuicsrcppsClass))
-#define GST_IS_QUICSRCPPS(obj)   (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_QUICSRCPPS))
-#define GST_IS_QUICSRCPPS_CLASS(obj)   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_QUICSRCPPS))
+#define GST_TYPE_QUICSINKGOP   (gst_quicsinkgop_get_type())
+#define GST_QUICSINKGOP(obj)   (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_QUICSINKGOP,GstQuicsinkgop))
+#define GST_QUICSINKGOP_CLASS(klass)   (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_QUICSINKGOP,GstQuicsinkgopClass))
+#define GST_IS_QUICSINKGOP(obj)   (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_QUICSINKGOP))
+#define GST_IS_QUICSINKGOP_CLASS(obj)   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_QUICSINKGOP))
 
-typedef struct _GstQuicsrcpps GstQuicsrcpps;
-typedef struct _GstQuicsrcppsClass GstQuicsrcppsClass;
+typedef struct _GstQuicsinkgop GstQuicsinkgop;
+typedef struct _GstQuicsinkgopClass GstQuicsinkgopClass;
 
-struct _GstQuicsrcpps
+struct _GstQuicsinkgop
 {
-  GstPushSrc parent;
+  GstBaseSink parent;
 
   gint socket;
 
-  guint stream_count;
+  /* SSL context */
+  SSL_CTX *ssl_ctx;
 
-  GstCaps *caps;
+  /* SSL key and cert path */
+  gchar *cert_file;
+  gchar *key_file;
+
+  /* LSQUIC logging path */
+  gchar *log_file;
 
   /* QUIC server address info */
   guint16 port;
   gchar *host;
-
-  /* Path to LSQUIC log file */
-  gchar *log_file;
 
   /* Local address storage */
   struct sockaddr_storage local_address;
@@ -72,18 +80,18 @@ struct _GstQuicsrcpps
   gboolean connection_active;
   lsquic_engine_t *engine;
   lsquic_conn_t *connection;
+  lsquic_stream_t *stream;
 
-  /* hold stream contexts */
-  GList* stream_context_queue;
-
+  /* stream context */
+  struct server_stream_ctx stream_ctx;
 };
 
-struct _GstQuicsrcppsClass
+struct _GstQuicsinkgopClass
 {
-  GstPushSrcClass parent_class;
+  GstBaseSinkClass parent_class;
 };
 
-GType gst_quicsrcpps_get_type (void);
+GType gst_quicsinkgop_get_type (void);
 
 G_END_DECLS
 

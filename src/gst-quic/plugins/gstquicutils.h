@@ -55,6 +55,14 @@ struct server_stream_ctx
     GstBuffer* buffer;        /* GstBuffer received from upstream */
 };
 
+struct stream_ctx
+{
+    gsize   offset;           /* Number of bytes read from stream */
+    gchar* buffer;
+    gboolean ready;           /* set when stream has been read to completion */
+    guint streamID;
+};
+
 gint gst_quic_log_buf (void *ctx, const char *buf, size_t len);
 
 gboolean gst_quic_set_addr(gchar* host, guint16 port, server_addr_u *server_addr);

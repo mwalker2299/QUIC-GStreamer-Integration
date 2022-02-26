@@ -25,6 +25,8 @@ boringssl_inc = include_directories('/home/matt/Documents/boringssl/include')
   'gstquicsink.c',
   'gstquicsrcpps.c',
   'gstquicsinkpps.c',
+  'gstquicsrcgop.c',
+  'gstquicsinkgop.c',
   'gstquic.c',
   'gstquicutils.c',
   'gsttcpsink.c',
