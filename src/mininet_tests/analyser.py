@@ -3,6 +3,7 @@
 import os
 import stack_latency_analysis
 import gstreamer_log_analysis
+import traceback
 
 def analyse(results_path):
   try:
@@ -17,24 +18,34 @@ def analyse(results_path):
         if "Failure" in filenames:
           continue
 
-        # Extract stack latency data
-        if "UDP" in dirpath:
-          stack_latency = stack_latency_analysis.convert_udp_capture(dirpath)
-        elif "TCP" in dirpath:
-          stack_latency_arrival, stack_latency_available = stack_latency_analysis.convert_tcp_capture(dirpath)
-        else:
-          stack_latency = stack_latency_analysis.convert_quic_capture(dirpath)
+        try:
 
-        if "TCP" in dirpath:
-          stack_latency_arrival_pd   = stack_latency_analysis.convert_results_to_panda(stack_latency_arrival)
-          stack_latency_available_pd = stack_latency_analysis.convert_results_to_panda(stack_latency_available)
-          stack_latency_analysis.save_results_tcp(arrival_time_diff_panda=stack_latency_arrival_pd, available_time_diff_panda=stack_latency_available_pd, directory=dirpath)
-        else:
-          stack_latency_pd = stack_latency_analysis.convert_results_to_panda(stack_latency)
-          stack_latency_analysis.save_results(time_diff_panda=stack_latency_pd, directory=dirpath)
+          # Extract stack latency data
+          if "UDP" in dirpath:
+            stack_latency = stack_latency_analysis.convert_udp_capture(dirpath)
+          elif "TCP" in dirpath:
+            stack_latency_arrival, stack_latency_available = stack_latency_analysis.convert_tcp_capture(dirpath)
+          elif "QUIC_PPS" in dirpath:
+            stack_latency = stack_latency_analysis.convert_quic_packet_capture(dirpath)
+          else:
+            stack_latency_arrival, stack_latency_available = stack_latency_analysis.convert_quic_stream_capture(dirpath)
 
-        # Extract app latency data
-        app_latency    = gstreamer_log_analysis.extract_Nal_unit_data(dirpath)
-        frame_stats_pd = gstreamer_log_analysis.identify_useful_units(app_latency)
-        app_latency_pd = gstreamer_log_analysis.convert_results_to_panda(app_latency)
-        gstreamer_log_analysis.save_results(time_diff_panda=app_latency_pd, frame_stats_panda=frame_stats_pd, directory=dirpath)
+          if "UDP" not in dirpath and "QUIC_PPS" not in dirpath:
+            stack_latency_arrival_pd   = stack_latency_analysis.convert_results_to_panda(stack_latency_arrival)
+            stack_latency_available_pd = stack_latency_analysis.convert_results_to_panda(stack_latency_available)
+            stack_latency_analysis.save_results_stream(arrival_time_diff_panda=stack_latency_arrival_pd, available_time_diff_panda=stack_latency_available_pd, directory=dirpath)
+          else:
+            stack_latency_pd = stack_latency_analysis.convert_results_to_panda(stack_latency)
+            stack_latency_analysis.save_results_datagram(time_diff_panda=stack_latency_pd, directory=dirpath)
+
+          # Extract app latency data
+          app_latency    = gstreamer_log_analysis.extract_Nal_unit_data(dirpath)
+          frame_stats_pd = gstreamer_log_analysis.identify_useful_units(app_latency)
+          app_latency_pd = gstreamer_log_analysis.convert_nal_results_to_panda(app_latency)
+          gstreamer_log_analysis.save_nal_results(time_diff_panda=app_latency_pd, frame_stats_panda=frame_stats_pd, directory=dirpath)
+        except Exception as e:
+          tb = traceback.format_exc()
+          print("exception while processing" + dirpath)
+          print("exception is " + str(e))
+          print("traceback is: ", tb)
+          print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
