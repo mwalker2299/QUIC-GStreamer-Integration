@@ -298,6 +298,17 @@ gst_quicsrcgop_dispose (GObject * object)
 
   GST_DEBUG_OBJECT (quicsrcgop, "dispose");
 
+  if (quicsrcgop->connection) {
+    GST_DEBUG_OBJECT (quicsrcgop, "dispose called, closing connection");
+    lsquic_conn_close(quicsrcgop->connection);
+    while (quicsrcgop->connection_active) {
+      gst_quic_read_packets(GST_ELEMENT(quicsrcgop), quicsrcgop->socket, quicsrcgop->engine, quicsrcgop->local_address);
+    }
+    quicsrcgop->connection = NULL;
+  } else {
+    GST_DEBUG_OBJECT (quicsrcgop, "dispose called, but connection has already been closed connection");
+  }
+
   if (quicsrcgop->engine) {
     lsquic_engine_destroy(quicsrcgop->engine);
   }
@@ -531,12 +542,14 @@ gst_quicsrcgop_start (GstBaseSrc * src)
   // large enough that blocks do not occur.
   engine_settings.es_max_sfcw = 524288;
 
-  // The initial stream flow control offset on the client side is 16384.
+  /// The initial stream flow control offset on the client side is 16384.
   // However, the server appears to begin with a much higher max send offset
   // It should be zero, but instead it's 6291456. We can force lsquic to behave
-  // by setting the following to 16384.
-  engine_settings.es_init_max_stream_data_bidi_local = 16384;
-  engine_settings.es_init_max_stream_data_bidi_local = 16384;
+  // by setting the following to parameters. Initially, I experiemented with
+  // setting these values to 16384, but, as lsquic waits until we have read up
+  // to half the stream flow control offset, this causes the window to grow too slowly.
+  engine_settings.es_init_max_stream_data_bidi_local = 16384*4;
+  engine_settings.es_init_max_stream_data_bidi_remote = 16384*4;
 
   // Using the default values (es_max_streams_in = 50, es_init_max_streams_bidi=100), the max number of streams grows at too little a rate
   // when we are creating a new packet per stream. This results in significant delays
@@ -545,6 +558,10 @@ gst_quicsrcgop_start (GstBaseSrc * src)
   // using es_init_max_streams_bidi allows lsquic to run without delays due to stream count.
   engine_settings.es_max_streams_in = 200;
   engine_settings.es_init_max_streams_bidi = 20000;
+
+  // We don't want to close the connection until all data has been acknowledged.
+  // So we set es_delay_onclose to true
+  engine_settings.es_delay_onclose = TRUE;
 
   // Parse IP address and set port number
   if (!gst_quic_set_addr(quicsrcgop->host, quicsrcgop->port, &server_addr))
@@ -759,7 +776,7 @@ gst_quicsrcgop_create (GstPushSrc * src, GstBuffer ** outbuf)
   }
 
   GST_OBJECT_LOCK(quicsrcgop);
-  while (!new_data)
+  while (!new_data && quicsrcgop->connection_active)
   {
     gst_quic_read_packets(GST_ELEMENT(quicsrcgop), quicsrcgop->socket, quicsrcgop->engine, quicsrcgop->local_address);
     stream_context_queue = quicsrcgop->stream_context_queue;
@@ -776,6 +793,11 @@ gst_quicsrcgop_create (GstPushSrc * src, GstBuffer ** outbuf)
     }
   }
   GST_OBJECT_UNLOCK(quicsrcgop);
+
+  // Connection may close while we are trying to read.
+  if (!quicsrcgop->connection_active) {
+    return GST_FLOW_EOS;
+  }
 
   // Create buffer from stream context
   stream_to_be_processed = list_element_to_be_processed->data;
@@ -796,7 +818,7 @@ gst_quicsrcgop_create (GstPushSrc * src, GstBuffer ** outbuf)
 
 
 
-  GST_DEBUG_OBJECT (quicsrcgop, "Read full rtp packet from stream %u. Pushing buffer of size %lu", stream_to_be_processed->streamID, gst_buffer_get_size(*outbuf));
+  GST_DEBUG_OBJECT (quicsrcgop, "Read full GOP from stream %u. Pushing buffer of size %lu", stream_to_be_processed->streamID, gst_buffer_get_size(*outbuf));
 
   return GST_FLOW_OK;
 }

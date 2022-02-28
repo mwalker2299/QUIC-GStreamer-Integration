@@ -539,6 +539,10 @@ gst_quicsrcpps_start (GstBaseSrc * src)
   engine_settings.es_max_streams_in = 200;
   engine_settings.es_init_max_streams_bidi = 20000;
 
+  // We don't want to close the connection until all data has been acknowledged.
+  // So we set es_delay_onclose to true
+  engine_settings.es_delay_onclose = TRUE;
+
   // Parse IP address and set port number
   if (!gst_quic_set_addr(quicsrcpps->host, quicsrcpps->port, &server_addr))
   {
@@ -752,7 +756,7 @@ gst_quicsrcpps_create (GstPushSrc * src, GstBuffer ** outbuf)
   }
 
   GST_OBJECT_LOCK(quicsrcpps);
-  while (!new_data)
+  while (!new_data && quicsrcpps->connection_active)
   {
     gst_quic_read_packets(GST_ELEMENT(quicsrcpps), quicsrcpps->socket, quicsrcpps->engine, quicsrcpps->local_address);
     stream_context_queue = quicsrcpps->stream_context_queue;
@@ -769,6 +773,11 @@ gst_quicsrcpps_create (GstPushSrc * src, GstBuffer ** outbuf)
     }
   }
   GST_OBJECT_UNLOCK(quicsrcpps);
+
+  // Connection may close while we are trying to read.
+  if (!quicsrcpps->connection_active) {
+    return GST_FLOW_EOS;
+  }
 
   // Create buffer from stream context
   stream_to_be_processed = list_element_to_be_processed->data;

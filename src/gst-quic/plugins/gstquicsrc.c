@@ -43,7 +43,7 @@
 #define QUIC_DEFAULT_PORT 12345
 #define QUIC_DEFAULT_HOST "127.0.0.1"
 #define QUIC_DEFAULT_LOG_PATH "/home/matt/Documents/lsquic-client-log.txt"
-#define READ_BUFFER_SIZE 30000
+#define READ_BUFFER_SIZE 1000000
 
 GST_DEBUG_CATEGORY_STATIC (gst_quicsrc_debug_category);
 #define GST_CAT_DEFAULT gst_quicsrc_debug_category
@@ -547,9 +547,15 @@ gst_quicsrc_start (GstBaseSrc * src)
   // The initial stream flow control offset on the client side is 16384.
   // However, the server appears to begin with a much higher max send offset
   // It should be zero, but instead it's 6291456. We can force lsquic to behave
-  // by setting the following to 16384.
-  engine_settings.es_init_max_stream_data_bidi_local = 16384;
-  engine_settings.es_init_max_stream_data_bidi_local = 16384;
+  // by setting the following to parameters. Initially, I experiemented with
+  // setting these values to 16384, but, as lsquic waits until we have read up
+  // to half the stream flow control offset, this causes the window to grow too slowly.
+  engine_settings.es_init_max_stream_data_bidi_local = 16384*4;
+  engine_settings.es_init_max_stream_data_bidi_remote = 16384*4;
+
+  // We don't want to close the connection until all data has been acknowledged.
+  // So we set es_delay_onclose to true
+  engine_settings.es_delay_onclose = TRUE;
 
   // Parse IP address and set port number
   if (!gst_quic_set_addr(quicsrc->host, quicsrc->port, &server_addr))

@@ -349,6 +349,7 @@ static void gst_quicsink_on_conn_closed (struct lsquic_conn *conn)
     // will not reconnect. This may change in the future.
     GST_DEBUG_OBJECT(quicsink, "MW: Connection closed, send EOS to pipeline");
     quicsink->connection_active = FALSE;
+    quicsink->stream = NULL;
 }
 
 static lsquic_stream_ctx_t *gst_quicsink_on_new_stream (void *stream_if_ctx, struct lsquic_stream *stream)
@@ -573,15 +574,26 @@ gst_quicsink_dispose (GObject * object)
 
   GST_DEBUG_OBJECT (quicsink, "dispose");
 
+  GST_OBJECT_LOCK (quicsink);
   if (quicsink->stream) {
+    GST_DEBUG_OBJECT (quicsink, "dispose called, closing stream");
     lsquic_stream_close(quicsink->stream);
     quicsink->stream = NULL;
+  } else {
+    GST_DEBUG_OBJECT (quicsink, "dispose called, but stream has already been closed");
   }
 
   if (quicsink->connection) {
+    GST_DEBUG_OBJECT (quicsink, "dispose called, closing connection");
     lsquic_conn_close(quicsink->connection);
-    quicsink->stream = NULL;
+    while (quicsink->connection_active) {
+      gst_quic_read_packets(GST_ELEMENT(quicsink), quicsink->socket, quicsink->engine, quicsink->local_address);
+    }
+    quicsink->connection = NULL;
+  } else {
+    GST_DEBUG_OBJECT (quicsink, "dispose called, but connection has already been closed");
   }
+  GST_OBJECT_UNLOCK (quicsink);
 
   /* clean up as possible.  may be called multiple times */
 
@@ -595,11 +607,16 @@ gst_quicsink_finalize (GObject * object)
 
   GST_DEBUG_OBJECT (quicsink, "finalize");
 
-  /* clean up object here */
+  GST_OBJECT_LOCK (quicsink);
+  /* clean up lsquic */
   if (quicsink->engine) {
+    GST_DEBUG_OBJECT(quicsink, "Destroying lsquic engine");
+    gst_quic_read_packets(GST_ELEMENT(quicsink), quicsink->socket, quicsink->engine, quicsink->local_address);
     lsquic_engine_destroy(quicsink->engine);
+    quicsink->engine = NULL;
   }
   lsquic_global_cleanup();
+  GST_OBJECT_UNLOCK (quicsink);
 
   G_OBJECT_CLASS (gst_quicsink_parent_class)->finalize (object);
 }
@@ -721,9 +738,15 @@ gst_quicsink_start (GstBaseSink * sink)
   // The initial stream flow control offset on the client side is 16384.
   // However, the server appears to begin with a much higher max send offset
   // It should be zero, but instead it's 6291456. We can force lsquic to behave
-  // by setting the following to 16384.
-  engine_settings.es_init_max_stream_data_bidi_local = 16384;
-  engine_settings.es_init_max_stream_data_bidi_local = 16384;
+  // by setting the following to parameters. Initially, I experiemented with
+  // setting these values to 16384, but, as lsquic waits until we have read up
+  // to half the stream flow control offset, this causes the window to grow too slowly.
+  engine_settings.es_init_max_stream_data_bidi_local = 16384*4;
+  engine_settings.es_init_max_stream_data_bidi_remote = 16384*4;
+
+  // We don't want to close the connection until all data has been acknowledged.
+  // So we set es_delay_onclose to true
+  engine_settings.es_delay_onclose = TRUE;
 
   // Parse IP address and set port number
   if (!gst_quic_set_addr(quicsink->host, quicsink->port, &server_addr))
@@ -850,11 +873,22 @@ gst_quicsink_stop (GstBaseSink * sink)
 {
   GstQuicsink *quicsink = GST_QUICSINK (sink);
 
+  GST_OBJECT_LOCK (quicsink);
+  GST_DEBUG_OBJECT (quicsink, "stop called, closing stream");
+  if (quicsink->stream) {
+    lsquic_stream_close(quicsink->stream);
+    quicsink->stream = NULL;
+  }
+
   GST_DEBUG_OBJECT (quicsink, "stop called, closing connection");
   if (quicsink->connection) {
     lsquic_conn_close(quicsink->connection);
-    lsquic_engine_process_conns(quicsink->engine);
+    while (quicsink->connection_active) {
+      gst_quic_read_packets(GST_ELEMENT(quicsink), quicsink->socket, quicsink->engine, quicsink->local_address);
+    }
+    quicsink->connection = NULL;
   }
+  GST_OBJECT_UNLOCK (quicsink);
 
   return TRUE;
 }
@@ -903,7 +937,10 @@ gst_quicsink_event (GstBaseSink * sink, GstEvent * event)
 
   if (GST_EVENT_EOS == event->type) {
     GST_DEBUG_OBJECT(quicsink, "GOT EOS EVENT");
-    lsquic_stream_close(quicsink->stream);
+    if (quicsink->stream) {
+      lsquic_stream_close(quicsink->stream);
+      quicsink->stream = NULL;
+    }
   }
 
   GST_DEBUG_OBJECT(quicsink, "Chaining up");

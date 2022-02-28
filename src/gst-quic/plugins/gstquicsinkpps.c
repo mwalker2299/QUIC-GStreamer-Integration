@@ -573,6 +573,19 @@ gst_quicsinkpps_dispose (GObject * object)
 
   GST_DEBUG_OBJECT (quicsinkpps, "dispose");
 
+  GST_OBJECT_LOCK (quicsinkpps);
+  if (quicsinkpps->connection) {
+    GST_DEBUG_OBJECT (quicsinkpps, "dispose called, closing connection");
+    lsquic_conn_close(quicsinkpps->connection);
+    while (quicsinkpps->connection_active) {
+      gst_quic_read_packets(GST_ELEMENT(quicsinkpps), quicsinkpps->socket, quicsinkpps->engine, quicsinkpps->local_address);
+    }
+    quicsinkpps->connection = NULL;
+  } else {
+    GST_DEBUG_OBJECT (quicsinkpps, "dispose called, but connection has already been closed");
+  }
+  GST_OBJECT_UNLOCK (quicsinkpps);
+
   /* clean up as possible.  may be called multiple times */
 
   G_OBJECT_CLASS (gst_quicsinkpps_parent_class)->dispose (object);
@@ -585,11 +598,16 @@ gst_quicsinkpps_finalize (GObject * object)
 
   GST_DEBUG_OBJECT (quicsinkpps, "finalize");
 
-  /* clean up object here */
+  GST_OBJECT_LOCK (quicsinkpps);
+  /* clean up lsquic */
   if (quicsinkpps->engine) {
+    GST_DEBUG_OBJECT(quicsinkpps, "Destroying lsquic engine");
+    gst_quic_read_packets(GST_ELEMENT(quicsinkpps), quicsinkpps->socket, quicsinkpps->engine, quicsinkpps->local_address);
     lsquic_engine_destroy(quicsinkpps->engine);
+    quicsinkpps->engine = NULL;
   }
   lsquic_global_cleanup();
+  GST_OBJECT_UNLOCK (quicsinkpps);
 
   G_OBJECT_CLASS (gst_quicsinkpps_parent_class)->finalize (object);
 }
@@ -716,6 +734,10 @@ gst_quicsinkpps_start (GstBaseSink * sink)
   engine_settings.es_max_streams_in = 200;
   engine_settings.es_init_max_streams_bidi = 20000;
 
+  // We don't want to close the connection until all data has been acknowledged.
+  // So we set es_delay_onclose to true
+  engine_settings.es_delay_onclose = TRUE;
+
   // Parse IP address and set port number
   if (!gst_quic_set_addr(quicsinkpps->host, quicsinkpps->port, &server_addr))
   {
@@ -838,11 +860,16 @@ gst_quicsinkpps_stop (GstBaseSink * sink)
 {
   GstQuicsinkpps *quicsinkpps = GST_QUICSINKPPS (sink);
 
+  GST_OBJECT_LOCK (quicsinkpps);
   GST_DEBUG_OBJECT (quicsinkpps, "stop called, closing connection");
   if (quicsinkpps->connection) {
     lsquic_conn_close(quicsinkpps->connection);
-    lsquic_engine_process_conns(quicsinkpps->engine);
+    while (quicsinkpps->connection_active) {
+      gst_quic_read_packets(GST_ELEMENT(quicsinkpps), quicsinkpps->socket, quicsinkpps->engine, quicsinkpps->local_address);
+    }
+    quicsinkpps->connection = NULL;
   }
+  GST_OBJECT_UNLOCK (quicsinkpps);
 
   return TRUE;
 }

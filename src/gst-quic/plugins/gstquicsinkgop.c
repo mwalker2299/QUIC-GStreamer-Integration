@@ -574,7 +574,26 @@ gst_quicsinkgop_dispose (GObject * object)
 
   GST_DEBUG_OBJECT (quicsinkgop, "dispose");
 
-  /* clean up as possible.  may be called multiple times */
+  GST_OBJECT_LOCK (quicsinkgop);
+  if (quicsinkgop->stream) {
+    GST_DEBUG_OBJECT (quicsinkgop, "dispose called, closing stream");
+    lsquic_stream_close(quicsinkgop->stream);
+    quicsinkgop->stream = NULL;
+  } else {
+    GST_DEBUG_OBJECT (quicsinkgop, "dispose called, but stream has already been closed");
+  }
+
+  if (quicsinkgop->connection) {
+    GST_DEBUG_OBJECT (quicsinkgop, "dispose called, closing connection");
+    lsquic_conn_close(quicsinkgop->connection);
+    while (quicsinkgop->connection_active) {
+      gst_quic_read_packets(GST_ELEMENT(quicsinkgop), quicsinkgop->socket, quicsinkgop->engine, quicsinkgop->local_address);
+    }
+    quicsinkgop->connection = NULL;
+  } else {
+    GST_DEBUG_OBJECT (quicsinkgop, "dispose called, but connection has already been closed");
+  }
+  GST_OBJECT_UNLOCK (quicsinkgop);
 
   G_OBJECT_CLASS (gst_quicsinkgop_parent_class)->dispose (object);
 }
@@ -586,11 +605,16 @@ gst_quicsinkgop_finalize (GObject * object)
 
   GST_DEBUG_OBJECT (quicsinkgop, "finalize");
 
-  /* clean up object here */
+  GST_OBJECT_LOCK (quicsinkgop);
+  /* clean up lsquic */
   if (quicsinkgop->engine) {
+    GST_DEBUG_OBJECT(quicsinkgop, "Destroying lsquic engine");
+    gst_quic_read_packets(GST_ELEMENT(quicsinkgop), quicsinkgop->socket, quicsinkgop->engine, quicsinkgop->local_address);
     lsquic_engine_destroy(quicsinkgop->engine);
+    quicsinkgop->engine = NULL;
   }
   lsquic_global_cleanup();
+  GST_OBJECT_UNLOCK (quicsinkgop);
 
   G_OBJECT_CLASS (gst_quicsinkgop_parent_class)->finalize (object);
 }
@@ -720,9 +744,15 @@ gst_quicsinkgop_start (GstBaseSink * sink)
   // The initial stream flow control offset on the client side is 16384.
   // However, the server appears to begin with a much higher max send offset
   // It should be zero, but instead it's 6291456. We can force lsquic to behave
-  // by setting the following to 16384.
-  engine_settings.es_init_max_stream_data_bidi_local = 16384;
-  engine_settings.es_init_max_stream_data_bidi_local = 16384;
+  // by setting the following to parameters. Initially, I experiemented with
+  // setting these values to 16384, but, as lsquic waits until we have read up
+  // to half the stream flow control offset, this causes the window to grow too slowly.
+  engine_settings.es_init_max_stream_data_bidi_local = 16384*4;
+  engine_settings.es_init_max_stream_data_bidi_remote = 16384*4;
+
+  // We don't want to close the connection until all data has been acknowledged.
+  // So we set es_delay_onclose to true
+  engine_settings.es_delay_onclose = TRUE;
 
   // Parse IP address and set port number
   if (!gst_quic_set_addr(quicsinkgop->host, quicsinkgop->port, &server_addr))
@@ -846,11 +876,22 @@ gst_quicsinkgop_stop (GstBaseSink * sink)
 {
   GstQuicsinkgop *quicsinkgop = GST_QUICSINKGOP (sink);
 
+  GST_OBJECT_LOCK (quicsinkgop);
+  GST_DEBUG_OBJECT (quicsinkgop, "stop called, closing stream");
+  if (quicsinkgop->stream) {
+    lsquic_stream_close(quicsinkgop->stream);
+    quicsinkgop->stream = NULL;
+  }
+
   GST_DEBUG_OBJECT (quicsinkgop, "stop called, closing connection");
   if (quicsinkgop->connection) {
     lsquic_conn_close(quicsinkgop->connection);
-    lsquic_engine_process_conns(quicsinkgop->engine);
+    while (quicsinkgop->connection_active) {
+      gst_quic_read_packets(GST_ELEMENT(quicsinkgop), quicsinkgop->socket, quicsinkgop->engine, quicsinkgop->local_address);
+    }
+    quicsinkgop->connection = NULL;
   }
+  GST_OBJECT_UNLOCK (quicsinkgop);
 
   return TRUE;
 }
@@ -899,7 +940,10 @@ gst_quicsinkgop_event (GstBaseSink * sink, GstEvent * event)
 
   if (GST_EVENT_EOS == event->type) {
     GST_DEBUG_OBJECT(quicsinkgop, "GOT EOS EVENT");
-    lsquic_stream_close(quicsinkgop->stream);
+    if (quicsinkgop->stream) {
+      lsquic_stream_close(quicsinkgop->stream);
+      quicsinkgop->stream = NULL;
+    }
   }
 
   GST_DEBUG_OBJECT(quicsinkgop, "Chaining up");
