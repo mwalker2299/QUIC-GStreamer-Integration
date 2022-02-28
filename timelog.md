@@ -376,4 +376,20 @@ No work was done during week 9, 10 and part of 11 as I was focused on coursework
   - On the single stream implementation, this was caused by a small maximum stream flow control window. On higher latencies, the frequent stream_blocked messages took a significant amount of time to arrive causing a delay when writing at the server. Setting the max stream flow control window to a higher value eliminated this issue.
   - On the packet per stream implementation, there were frequent delays caused by the maximum stream count being reach repeatedly. Setting a higher initial stream maximum and increasing the rate at which the stream maximum could grow fixed this issue.
 
+### 26th FEB 2022
+
+* *1.50 hours* Mininet appeared to crash during an overnight dry run. The error message has been talked about on forums before and it doesnt seem to be caused by anything ive done. This error has never occured before, so I expect it is rare. In case this error occurs again, I have modified the test_runner to allow it to start again from whatever point it got to before stopping.
+* *0.50 hours* The mininet bug appeared again, So i have added a bash script which will restart the tests if necessary.
+* *0.25 hours* When sending rtp packets over a stream with no message boundaries to delineate the start and end of packets, we add a 2 byte length indicator to the beginning of packets. The rtppayloader does not take this into account, and so we end up with rtp packets larger than the path mtu. I have set the maximum path mtu to 1400-2=1398 for implementations which utilise rfc 4751.
+* *2.00 hours* Added GOP quic implementation.
+* *3.00 hours* Looked into an issue on single stream QUIC where the connection would fail due to a flow control violation on high jitter. This was caused by what appears to be an lsquic bug, the server's initial max send offset was much higher than the client's initial max recv offset. By explicitly setting the max send and recv offsets at engine creation, this issue can be avoided.
+
+### 27th FEB 2022
+
+* *1.50 hours* I was seeing some delays still present in the QUIC implementations as well as some failures on the PPS QUIC runs. Experimenting with the parameter values for max streams and max stream data has fixed the issue, further testing shows no problems.
+* *1.00 hours* Previously, we would monitor the server gst-launch process and kill the other threads when this process finished or after a timeout has passed. However, it makes more sense to have the client inidicate end of execution, since the server side pipeline will always finish before the client. I swapped the controlling threads and confirmed that this functioned as desired.
+* *2.50 hours* The QUIC client elements have issues ending execution when the server closes the connection due. I spent time unifying the server elements tear down process and fixed some multithreading issues on the client side. There was also an issue where lsquic would not send a connection close frame, I made a tweak to the lsquic src code to ensure that the connection close frame was always sent, resolving this issue. I also utilised the delay_onclose setting to ensure that the server would not close the connection while there were outstanding retransmissions.
+* *1.00 hours* Looked into an issue where tcp would slow its sending rate on high loss tests but lsquic would not. This turned out to be due to a difference in congestion control protocols. TCP was using cubic and so every packet loss registered as congestion on the network, resulting in a lowered sending rate. LSQUIC on the other hand uses BBR by default, and so the sending rate is tied to the RTT. I am still considering which I should use for the final run.
+* *2.50 hours* Began making necessary changes to stack_latency_analysis scripts to work with QUIC streams. While testing I noticed that the tcp analysis was crashing due to lack of memory, so I improved the memory effieciency by leaving the payloads as a python list. The tcp analysis was also taking a long time to run, but this was due to extra data added by the pre-test iperf command. Switching this back to UDP solved this issue.
+
 
