@@ -460,6 +460,7 @@ gst_tcpsink_render (GstBaseSink * sink, GstBuffer * buffer)
     }
     break;
   }
+   GST_DEBUG_OBJECT(tcpsink, "sent full buffer: %ld bytes", bytes_sent);
 
   gst_buffer_unmap(buffer, &map);
 
