@@ -735,6 +735,8 @@ gst_quicsink_start (GstBaseSink * sink)
   // large enough that blocks do not occur.
   engine_settings.es_max_sfcw = 524288;
 
+  engine_settings.es_base_plpmtu = 1472;
+
   // The initial stream flow control offset on the client side is 16384.
   // However, the server appears to begin with a much higher max send offset
   // It should be zero, but instead it's 6291456. We can force lsquic to behave

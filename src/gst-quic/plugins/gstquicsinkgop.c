@@ -733,6 +733,8 @@ gst_quicsinkgop_start (GstBaseSink * sink)
   // large enough that blocks do not occur.
   engine_settings.es_max_sfcw = 524288;
 
+  engine_settings.es_base_plpmtu = 1472;
+
   // Using the default values (es_max_streams_in = 50, es_init_max_streams_bidi=100), the max number of streams grows at too little a rate
   // when we are creating a new packet per stream. This results in significant delays
   // By setting es_max_streams_in and es_init_max_streams_bidi to a higher value, we can avoid this.
