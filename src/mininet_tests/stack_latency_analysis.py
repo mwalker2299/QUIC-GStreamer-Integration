@@ -246,12 +246,6 @@ def extract_rtp_data_from_tcp_stream_available(filename):
             stream.append(new_data)
             stream = sorted(stream, key=lambda x: x[0])
 
-        
-        
-        print("Packet In: seqnum = ", seq_num, ",  payload_length = ", payload_length)
-        for i,stream_chunk in enumerate(stream):
-          print("Stream chunk ",i,": seqnum = ", stream_chunk[0], ", payload_length = ", stream_chunk[1])
-
 
 
         if data_available:
