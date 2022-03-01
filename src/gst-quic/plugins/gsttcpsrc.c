@@ -435,7 +435,9 @@ gst_tcpsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
   {
     data_availiable = TCP_DEFAULT_READ_SIZE;
   }
-    *outbuf = gst_buffer_new_and_alloc(data_availiable);
+  *outbuf = gst_buffer_new_and_alloc(data_availiable);
+
+  GST_DEBUG_OBJECT(tcpsrc, "Start reading, data_available = %d", data_availiable);
 
   gst_buffer_map (*outbuf, &map, GST_MAP_READWRITE);
   bytes_read = recv(tcpsrc->socket, map.data, data_availiable, 0);
