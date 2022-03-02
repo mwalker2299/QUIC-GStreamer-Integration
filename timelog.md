@@ -393,3 +393,31 @@ No work was done during week 9, 10 and part of 11 as I was focused on coursework
 * *2.50 hours* Began making necessary changes to stack_latency_analysis scripts to work with QUIC streams. While testing I noticed that the tcp analysis was crashing due to lack of memory, so I improved the memory effieciency by leaving the payloads as a python list. The tcp analysis was also taking a long time to run, but this was due to extra data added by the pre-test iperf command. Switching this back to UDP solved this issue.
 
 
+### 28th FEB 2022
+
+* *4.00 hours* Finished making additions to quic stream stack latency analysis code.
+* *8.00 hours* Worked on pipelines used in tests to ensure the following:
+  - frames do not arrive at encoder at a faster rate than 24 frames per second
+  - Packets are not considered lost by jitterbuffer before they should be
+  - There are no unnessecary reading delays in the tcpsrc and quicsrc (ss) elements
+
+
+### 1st MAR 2022
+
+* *12.50 hours* Another long day of debuggin before the final test:
+  - The previous changes to the jitter buffer were flawed, leading to packets being declared lost far too late. This was fixed. 
+  - Due to the changes in pipeline, many rtp packets are smaller than the limit of 1400 bytes. This lead to parts of multiple streams being sent in the same datagram. This behaviour is undesired as we do not want a single datagram loss to impact multiple rtp packets for QUIC PPS. I made some modifications to the lsquic source code to prevent this.
+  - The initial mtu used by QUIC is 1427 which does not leave enough room for a full 1400 byte rtp packet. This values increases via probing, but this is delayed on high loss, high latency networks. Since we know the MTU will be 1500, we can set this value initially to avoid this.
+  - Investigated an issue where lsquic would not retransmit packets for up to several seconds! Lsquicuses BBR for congestion control, once it exits the start up phase and enters RTT probe mode, the congestion window decreases in size for a substantial period of time on high latency, high loss links. This should prevent any packets from being sent, but new packets are sent regardless. However, retransmissions are delayed. Since I am unable to force the new packets to experience the same delay (and im not sure if this behaviour is even correct) I have opted to rmove the delay from retransmissions. 
+  - Investigated app latency delays on high latency tcp during beginning of each run. This appears to be due to congestion control.
+
+### 2nd MAR 2022
+
+* *3.00 hours* The rtp jitter buffer was still not behaving properly, occassionally packets would be considered lost too early and overall it was waiting 0.042ms too long. This turned out to be an issue with the timers and the delay parameter. I have fixed this now.
+* *1.00 hours* Inspected final dry run before kicking off full tests.
+* *0.50 hours* Meeting with Colin
+* *0.25 hours* Added minutes and plan to appropriate meeting file
+* *1.00 hours* while examining test logs I noticed that frames were not arriving at the enocder at the desired 24 fps rate. I made some modifications to the identity element:
+  - Record time at which first frame passes through identity element (FBRT)
+  - For each subsequent frame add the PTS to FBRT and requests a wait until this time. This ensures that the 24 fps rate is acheived.
+* *4.00 hours* During testing, I noticed that the jitter buffer would only start a timer for the first expected packet. When later packets arrives, other timers are added for the gap packets. This works fine for udp, but for transmissions with any form of HOL blocking (TCP, QUIC_SS) we will not see subsequent packets until the first missing packet arrives. This leads packets which should be considered late being accepted. I began modfifying the jitter buffer such that, for implementations marked HOL, a list of expected timers would be created. There are still some kinks to work out though.
