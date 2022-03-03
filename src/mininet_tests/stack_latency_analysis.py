@@ -162,9 +162,14 @@ def extract_rtp_data_from_tcp_capture(filename):
           time_in_milliseconds = datetime_format.timestamp() * 1000
 
           for packet in str.split(line_contents[6], ','):
-
-            packet_number = int(packet)
-            packet_info.append([packet_number, time_in_milliseconds])
+            try:
+              packet_number = int(packet)
+              packet_info.append([packet_number, time_in_milliseconds])
+            except:
+              # Retransmissions are ignored by the dissector.
+              # We are only interested in the first instance anyway
+              # so we can ignore these lines.
+              continue
 
 
         
