@@ -1040,6 +1040,9 @@ gst_quicsinkgop_render (GstBaseSink * sink, GstBuffer * buffer)
   {
     gst_quic_read_packets(GST_ELEMENT(quicsinkgop), quicsinkgop->socket, quicsinkgop->engine, quicsinkgop->local_address);
   }
+  // If we do not tell lsquic to explicitly send packets after writing, 
+  // it may delay until the packet can be filled with more data, this is not desired.
+  lsquic_engine_send_unsent_packets (quicsinkgop->engine);
   GST_OBJECT_UNLOCK(quicsinkgop);
 
   return GST_FLOW_OK;
