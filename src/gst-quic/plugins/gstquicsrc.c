@@ -756,7 +756,7 @@ gst_quicsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
   // Call read with lock taken as simulatenous calls can lead to an assertion error within lsquic
   GST_OBJECT_LOCK(quicsrc);
   lsquic_stream_wantread(quicsrc->stream, 1);
-  while (quicsrc->stream_context->offset == 0)
+  while (quicsrc->stream_context->offset == 0 && !quicsrc->stream_context->finished)
   {
     gst_quic_read_packets(GST_ELEMENT(quicsrc), quicsrc->socket, quicsrc->engine, quicsrc->local_address);
   }
