@@ -533,6 +533,8 @@ gst_quicsrcpps_start (GstBaseSrc * src)
 
   engine_settings.es_base_plpmtu = 1472;
 
+	engine_settings.es_pace_packets = FALSE;
+
   // Using the default values (es_max_streams_in = 50, es_init_max_streams_bidi=100), the max number of streams grows at too little a rate
   // when we are creating a new packet per stream. This results in significant delays
   // By setting es_max_streams_in and es_init_max_streams_bidi to a higher value, we can avoid this.

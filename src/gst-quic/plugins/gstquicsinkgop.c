@@ -735,6 +735,8 @@ gst_quicsinkgop_start (GstBaseSink * sink)
 
   engine_settings.es_base_plpmtu = 1472;
 
+	engine_settings.es_pace_packets = FALSE;
+
   // Using the default values (es_max_streams_in = 50, es_init_max_streams_bidi=100), the max number of streams grows at too little a rate
   // when we are creating a new packet per stream. This results in significant delays
   // By setting es_max_streams_in and es_init_max_streams_bidi to a higher value, we can avoid this.
@@ -1012,7 +1014,7 @@ gst_quicsinkgop_render (GstBaseSink * sink, GstBuffer * buffer)
     return GST_FLOW_ERROR;
   } 
 
-  GST_DEBUG_OBJECT (quicsinkgop, "render -- duration: %" GST_TIME_FORMAT ",  dts: %" GST_TIME_FORMAT ",  pts: %" GST_TIME_FORMAT, GST_TIME_ARGS(buffer->duration), GST_TIME_ARGS(buffer->dts), GST_TIME_ARGS(buffer->pts));
+  GST_DEBUG_OBJECT (quicsinkgop, "render -- duration: %" GST_TIME_FORMAT ",  dts: %" GST_TIME_FORMAT ",  pts: %" GST_TIME_FORMAT", GREP_MARKER pts: %lu", GST_TIME_ARGS(buffer->duration), GST_TIME_ARGS(buffer->dts), GST_TIME_ARGS(buffer->pts), buffer->pts);
   if (!(gst_buffer_get_flags(buffer) & GST_BUFFER_FLAG_DELTA_UNIT)) {
     GST_DEBUG_OBJECT (quicsinkgop, "GST_BUFFER_FLAG_DELTA_UNIT is not set, this frame is an I-frame");
     start_gop = TRUE;

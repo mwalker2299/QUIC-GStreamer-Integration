@@ -737,6 +737,8 @@ gst_quicsink_start (GstBaseSink * sink)
 
   engine_settings.es_base_plpmtu = 1472;
 
+	engine_settings.es_pace_packets = FALSE;
+
   // The initial stream flow control offset on the client side is 16384.
   // However, the server appears to begin with a much higher max send offset
   // It should be zero, but instead it's 6291456. We can force lsquic to behave
@@ -1008,7 +1010,7 @@ gst_quicsink_render (GstBaseSink * sink, GstBuffer * buffer)
     return GST_FLOW_ERROR;
   } 
 
-  GST_DEBUG_OBJECT (quicsink, "render -- duration: %" GST_TIME_FORMAT ",  dts: %" GST_TIME_FORMAT ",  pts: %" GST_TIME_FORMAT, GST_TIME_ARGS(buffer->duration), GST_TIME_ARGS(buffer->dts), GST_TIME_ARGS(buffer->pts));
+  GST_DEBUG_OBJECT (quicsink, "render -- duration: %" GST_TIME_FORMAT ",  dts: %" GST_TIME_FORMAT ",  pts: %" GST_TIME_FORMAT", GREP_MARKER pts: %lu", GST_TIME_ARGS(buffer->duration), GST_TIME_ARGS(buffer->dts), GST_TIME_ARGS(buffer->pts), buffer->pts);
   if (!(gst_buffer_get_flags(buffer) & GST_BUFFER_FLAG_DELTA_UNIT)) {
     GST_DEBUG_OBJECT (quicsink, "GST_BUFFER_FLAG_DELTA_UNIT is not set, this frame is an I-frame");
   } 

@@ -441,7 +441,7 @@ gst_tcpsink_render (GstBaseSink * sink, GstBuffer * buffer)
     return GST_FLOW_ERROR;
   } 
 
-  GST_DEBUG_OBJECT (tcpsink, "render -- duration: %" GST_TIME_FORMAT ",  dts: %" GST_TIME_FORMAT ",  pts: %" GST_TIME_FORMAT, GST_TIME_ARGS(buffer->duration), GST_TIME_ARGS(buffer->dts), GST_TIME_ARGS(buffer->pts));
+  GST_DEBUG_OBJECT (tcpsink, "render -- duration: %" GST_TIME_FORMAT ",  dts: %" GST_TIME_FORMAT ",  pts: %" GST_TIME_FORMAT", GREP_MARKER pts: %lu", GST_TIME_ARGS(buffer->duration), GST_TIME_ARGS(buffer->dts), GST_TIME_ARGS(buffer->pts), buffer->pts);
   
   bytes_sent = 0;
   buffer_size = gst_buffer_get_size(buffer);
