@@ -57,6 +57,3 @@ def analyse(results_path):
           print("traceback is: ", tb)
           print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
 
-
-# analyse("/home/matt/T7/mininet_results/UDP/")
-analyse("/home/matt/T7/mininet_results/QUIC_PPS/Delay_10ms/Loss_0%/Jitter_0ms/Buffer_Delay_42ms")
