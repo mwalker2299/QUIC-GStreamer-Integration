@@ -17,18 +17,18 @@
  * Boston, MA 02110-1335, USA.
  */
 /**
- * SECTION:element-gstquicsrcgop
+ * SECTION:element-gstquicsrcfps
  *
- * The quicsrcgop element receives data over the network using the QUIC protocol.
+ * The quicsrcfps element receives data over the network using the QUIC protocol.
  * It is currently set up for testing purposes only and so only works with rtp packets.
  * Each rtp packet comes in its own stream.
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 quicsrcgop host={addr} port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96, seqnum-base=(int)0\" ! rtpjitterbuffer latency={buffer_delay} ! rtph264depay ! h264parse ! queue ! decodebin ! videoconvert !  fakesink -v
+ * gst-launch-1.0 quicsrcfps host={addr} port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96, seqnum-base=(int)0\" ! rtpjitterbuffer latency={buffer_delay} ! rtph264depay ! h264parse ! queue ! decodebin ! videoconvert !  fakesink -v
  * ]|
- * Receive data over the network using quicsrcgop
+ * Receive data over the network using quicsrcfps
  * </refsect2>
  */
 
@@ -37,21 +37,21 @@
 #endif
 
 #include <gst/gst.h>
-#include "gstquicsrcgop.h"
+#include "gstquicsrcfps.h"
 #include "gstquicutils.h"
 
 #define QUIC_CLIENT 0
 #define QUIC_DEFAULT_PORT 12345
 #define QUIC_DEFAULT_HOST "127.0.0.1"
 #define QUIC_DEFAULT_LOG_PATH "/home/matt/Documents/lsquic-client-log.txt"
-#define READ_BUFFER_SIZE 1000000
+#define READ_BUFFER_SIZE 100000
 
-GST_DEBUG_CATEGORY_STATIC (gst_quicsrcgop_debug_category);
-#define GST_CAT_DEFAULT gst_quicsrcgop_debug_category
+GST_DEBUG_CATEGORY_STATIC (gst_quicsrcfps_debug_category);
+#define GST_CAT_DEFAULT gst_quicsrcfps_debug_category
 
 /* pad templates */
 
-static GstStaticPadTemplate gst_quicsrcgop_src_template =
+static GstStaticPadTemplate gst_quicsrcfps_src_template =
 GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
@@ -71,71 +71,71 @@ enum
 
 /* class initialization */
 
-G_DEFINE_TYPE_WITH_CODE (GstQuicsrcgop, gst_quicsrcgop, GST_TYPE_PUSH_SRC,
-    GST_DEBUG_CATEGORY_INIT (gst_quicsrcgop_debug_category, "quicsrcgop", 0,
-        "debug category for quicsrcgop element"));
+G_DEFINE_TYPE_WITH_CODE (GstQuicsrcfps, gst_quicsrcfps, GST_TYPE_PUSH_SRC,
+    GST_DEBUG_CATEGORY_INIT (gst_quicsrcfps_debug_category, "quicsrcfps", 0,
+        "debug category for quicsrcfps element"));
 
 /* prototypes */
 
-static void gst_quicsrcgop_set_property (GObject * object,
+static void gst_quicsrcfps_set_property (GObject * object,
     guint property_id, const GValue * value, GParamSpec * pspec);
-static void gst_quicsrcgop_get_property (GObject * object,
+static void gst_quicsrcfps_get_property (GObject * object,
     guint property_id, GValue * value, GParamSpec * pspec);
 
-static void gst_quicsrcgop_dispose (GObject * object);
-static void gst_quicsrcgop_finalize (GObject * object);
+static void gst_quicsrcfps_dispose (GObject * object);
+static void gst_quicsrcfps_finalize (GObject * object);
 
-static GstCaps *gst_quicsrcgop_get_caps (GstBaseSrc * src, GstCaps * filter);
+static GstCaps *gst_quicsrcfps_get_caps (GstBaseSrc * src, GstCaps * filter);
 
-static gboolean gst_quicsrcgop_start (GstBaseSrc * src);
-static gboolean gst_quicsrcgop_stop (GstBaseSrc * src);
+static gboolean gst_quicsrcfps_start (GstBaseSrc * src);
+static gboolean gst_quicsrcfps_stop (GstBaseSrc * src);
 
-static gboolean gst_quicsrcgop_unlock (GstBaseSrc * src);
-static gboolean gst_quicsrcgop_unlock_stop (GstBaseSrc * src);
-static gboolean gst_quicsrcgop_event (GstBaseSrc * src, GstEvent * event);
+static gboolean gst_quicsrcfps_unlock (GstBaseSrc * src);
+static gboolean gst_quicsrcfps_unlock_stop (GstBaseSrc * src);
+static gboolean gst_quicsrcfps_event (GstBaseSrc * src, GstEvent * event);
 
-static GstFlowReturn gst_quicsrcgop_create (GstPushSrc * src, GstBuffer ** outbuf);
+static GstFlowReturn gst_quicsrcfps_create (GstPushSrc * src, GstBuffer ** outbuf);
 
 /* Quic functions */
-static lsquic_conn_ctx_t *gst_quicsrcgop_on_new_conn (void *stream_if_ctx, struct lsquic_conn *conn);
-static void gst_quicsrcgop_on_hsk_done(lsquic_conn_t *conn, enum lsquic_hsk_status status);
-static void gst_quicsrcgop_on_conn_closed (struct lsquic_conn *conn);
-static lsquic_stream_ctx_t *gst_quicsrcgop_on_new_stream (void *stream_if_ctx, struct lsquic_stream *stream);
-static size_t gst_quicsrcgop_readf (void *ctx, const unsigned char *data, size_t len, int fin);
-static void gst_quicsrcgop_on_read (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx);
-static void gst_quicsrcgop_on_write (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx);
-static void gst_quicsrcgop_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx);
+static lsquic_conn_ctx_t *gst_quicsrcfps_on_new_conn (void *stream_if_ctx, struct lsquic_conn *conn);
+static void gst_quicsrcfps_on_hsk_done(lsquic_conn_t *conn, enum lsquic_hsk_status status);
+static void gst_quicsrcfps_on_conn_closed (struct lsquic_conn *conn);
+static lsquic_stream_ctx_t *gst_quicsrcfps_on_new_stream (void *stream_if_ctx, struct lsquic_stream *stream);
+static size_t gst_quicsrcfps_readf (void *ctx, const unsigned char *data, size_t len, int fin);
+static void gst_quicsrcfps_on_read (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx);
+static void gst_quicsrcfps_on_write (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx);
+static void gst_quicsrcfps_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx);
 
 /* QUIC callbacks passed to quic engine */
-static struct lsquic_stream_if quicsrcgop_callbacks =
+static struct lsquic_stream_if quicsrcfps_callbacks =
 {
-    .on_new_conn        = gst_quicsrcgop_on_new_conn,
-    .on_hsk_done        = gst_quicsrcgop_on_hsk_done,
-    .on_conn_closed     = gst_quicsrcgop_on_conn_closed,
-    .on_new_stream      = gst_quicsrcgop_on_new_stream,
-    .on_read            = gst_quicsrcgop_on_read,
-    .on_write           = gst_quicsrcgop_on_write,
-    .on_close           = gst_quicsrcgop_on_close,
+    .on_new_conn        = gst_quicsrcfps_on_new_conn,
+    .on_hsk_done        = gst_quicsrcfps_on_hsk_done,
+    .on_conn_closed     = gst_quicsrcfps_on_conn_closed,
+    .on_new_stream      = gst_quicsrcfps_on_new_stream,
+    .on_read            = gst_quicsrcfps_on_read,
+    .on_write           = gst_quicsrcfps_on_write,
+    .on_close           = gst_quicsrcfps_on_close,
 };
 
 static void
-gst_quicsrcgop_class_init (GstQuicsrcgopClass * klass)
+gst_quicsrcfps_class_init (GstQuicsrcfpsClass * klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS (klass);
   GstPushSrcClass *push_src_class = (GstPushSrcClass *) klass;
 
   gst_element_class_add_static_pad_template (GST_ELEMENT_CLASS (klass),
-      &gst_quicsrcgop_src_template);
+      &gst_quicsrcfps_src_template);
 
   gst_element_class_set_static_metadata (GST_ELEMENT_CLASS (klass),
       "QUIC packet receiver", "Source/Network", "Receive packets over the network via QUIC",
       "Matthew Walker <mjwalker2299@gmail.com>");
 
-  gobject_class->set_property = gst_quicsrcgop_set_property;
-  gobject_class->get_property = gst_quicsrcgop_get_property;
-  gobject_class->dispose = gst_quicsrcgop_dispose;
-  gobject_class->finalize = gst_quicsrcgop_finalize;
+  gobject_class->set_property = gst_quicsrcfps_set_property;
+  gobject_class->get_property = gst_quicsrcfps_get_property;
+  gobject_class->dispose = gst_quicsrcfps_dispose;
+  gobject_class->finalize = gst_quicsrcfps_finalize;
 
   g_object_class_install_property (gobject_class, PROP_HOST,
       g_param_spec_string ("host", "Host",
@@ -154,65 +154,65 @@ gst_quicsrcgop_class_init (GstQuicsrcgopClass * klass)
           "The caps of the source pad", GST_TYPE_CAPS,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_quicsrcgop_get_caps);
+  base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_quicsrcfps_get_caps);
 
-  base_src_class->start = GST_DEBUG_FUNCPTR (gst_quicsrcgop_start);
-  base_src_class->stop = GST_DEBUG_FUNCPTR (gst_quicsrcgop_stop);
+  base_src_class->start = GST_DEBUG_FUNCPTR (gst_quicsrcfps_start);
+  base_src_class->stop = GST_DEBUG_FUNCPTR (gst_quicsrcfps_stop);
 
-  base_src_class->unlock = GST_DEBUG_FUNCPTR (gst_quicsrcgop_unlock);
-  base_src_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_quicsrcgop_unlock_stop);
-  base_src_class->event = GST_DEBUG_FUNCPTR (gst_quicsrcgop_event);
+  base_src_class->unlock = GST_DEBUG_FUNCPTR (gst_quicsrcfps_unlock);
+  base_src_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_quicsrcfps_unlock_stop);
+  base_src_class->event = GST_DEBUG_FUNCPTR (gst_quicsrcfps_event);
 
-  push_src_class->create = GST_DEBUG_FUNCPTR (gst_quicsrcgop_create);
+  push_src_class->create = GST_DEBUG_FUNCPTR (gst_quicsrcfps_create);
 }
 
 static gboolean
 tick_connection (gpointer context) 
 {
-  GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (context);
+  GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (context);
 
-  GST_OBJECT_LOCK(quicsrcgop);
-  if (quicsrcgop->engine) {
-    gst_quic_read_packets(GST_ELEMENT(quicsrcgop), quicsrcgop->socket, quicsrcgop->engine, quicsrcgop->local_address);
-    GST_OBJECT_UNLOCK(quicsrcgop);
+  GST_OBJECT_LOCK(quicsrcfps);
+  if (quicsrcfps->engine) {
+    gst_quic_read_packets(GST_ELEMENT(quicsrcfps), quicsrcfps->socket, quicsrcfps->engine, quicsrcfps->local_address);
+    GST_OBJECT_UNLOCK(quicsrcfps);
     return TRUE;
   } else {
-    GST_OBJECT_UNLOCK(quicsrcgop);
+    GST_OBJECT_UNLOCK(quicsrcfps);
     return FALSE;
   }
 
 }
 
 static void
-gst_quicsrcgop_init (GstQuicsrcgop * quicsrcgop)
+gst_quicsrcfps_init (GstQuicsrcfps * quicsrcfps)
 {
-  quicsrcgop->port = QUIC_DEFAULT_PORT;
-  quicsrcgop->host = g_strdup (QUIC_DEFAULT_HOST);
-  quicsrcgop->log_file = g_strdup(QUIC_DEFAULT_LOG_PATH);
-  quicsrcgop->socket = -1;
-  quicsrcgop->connection_active = FALSE;
-  quicsrcgop->engine = NULL;
-  quicsrcgop->connection = NULL;
-  quicsrcgop->stream_count = 0;
+  quicsrcfps->port = QUIC_DEFAULT_PORT;
+  quicsrcfps->host = g_strdup (QUIC_DEFAULT_HOST);
+  quicsrcfps->log_file = g_strdup(QUIC_DEFAULT_LOG_PATH);
+  quicsrcfps->socket = -1;
+  quicsrcfps->connection_active = FALSE;
+  quicsrcfps->engine = NULL;
+  quicsrcfps->connection = NULL;
+  quicsrcfps->stream_count = 0;
 
-  quicsrcgop->stream_context_queue = NULL;
+  quicsrcfps->stream_context_queue = NULL;
 
   /* configure basesrc to be a live source */
-  gst_base_src_set_live (GST_BASE_SRC (quicsrcgop), TRUE);
+  gst_base_src_set_live (GST_BASE_SRC (quicsrcfps), TRUE);
   /* make basesrc output a segment in time */
-  gst_base_src_set_format (GST_BASE_SRC (quicsrcgop), GST_FORMAT_TIME);
+  gst_base_src_set_format (GST_BASE_SRC (quicsrcfps), GST_FORMAT_TIME);
   /* make basesrc set timestamps on outgoing buffers based on the running_time
    * when they were captured */
-  gst_base_src_set_do_timestamp (GST_BASE_SRC (quicsrcgop), TRUE);
+  gst_base_src_set_do_timestamp (GST_BASE_SRC (quicsrcfps), TRUE);
 }
 
 static void
-gst_quicsrcgop_set_property (GObject * object, guint property_id,
+gst_quicsrcfps_set_property (GObject * object, guint property_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (object);
+  GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (object);
 
-  GST_DEBUG_OBJECT (quicsrcgop, "set_property");
+  GST_DEBUG_OBJECT (quicsrcfps, "set_property");
 
   switch (property_id) {
     case PROP_HOST:
@@ -220,20 +220,20 @@ gst_quicsrcgop_set_property (GObject * object, guint property_id,
         g_warning ("host property cannot be NULL");
         break;
       }
-      g_free (quicsrcgop->host);
-      quicsrcgop->host = g_strdup (g_value_get_string (value));
+      g_free (quicsrcfps->host);
+      quicsrcfps->host = g_strdup (g_value_get_string (value));
       break;
     case PROP_LOG:
       if (!g_value_get_string (value)) {
         g_warning ("log file path property cannot be NULL");
         break;
       }
-      g_free (quicsrcgop->log_file);
-      quicsrcgop->log_file = g_strdup (g_value_get_string (value));
+      g_free (quicsrcfps->log_file);
+      quicsrcfps->log_file = g_strdup (g_value_get_string (value));
       break;
     //FIXME: Should we protect against this being null?
     case PROP_PORT:
-      quicsrcgop->port = g_value_get_int (value);
+      quicsrcfps->port = g_value_get_int (value);
       break;
     case PROP_CAPS:
     {
@@ -247,14 +247,14 @@ gst_quicsrcgop_set_property (GObject * object, guint property_id,
         new_caps = gst_caps_copy (new_caps_val);
       }
 
-      GST_OBJECT_LOCK (quicsrcgop);
-      old_caps = quicsrcgop->caps;
-      quicsrcgop->caps = new_caps;
-      GST_OBJECT_UNLOCK (quicsrcgop);
+      GST_OBJECT_LOCK (quicsrcfps);
+      old_caps = quicsrcfps->caps;
+      quicsrcfps->caps = new_caps;
+      GST_OBJECT_UNLOCK (quicsrcfps);
       if (old_caps)
         gst_caps_unref (old_caps);
 
-      gst_pad_mark_reconfigure (GST_BASE_SRC_PAD (quicsrcgop));
+      gst_pad_mark_reconfigure (GST_BASE_SRC_PAD (quicsrcfps));
       break;
     }
     default:
@@ -264,26 +264,26 @@ gst_quicsrcgop_set_property (GObject * object, guint property_id,
 }
 
 static void
-gst_quicsrcgop_get_property (GObject * object, guint property_id,
+gst_quicsrcfps_get_property (GObject * object, guint property_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (object);
-  GST_DEBUG_OBJECT (quicsrcgop, "get_property");
+  GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (object);
+  GST_DEBUG_OBJECT (quicsrcfps, "get_property");
 
   switch (property_id) {
     case PROP_HOST:
-      g_value_set_string (value, quicsrcgop->host);
+      g_value_set_string (value, quicsrcfps->host);
       break;
     case PROP_LOG:
-      g_value_set_string (value, quicsrcgop->log_file);
+      g_value_set_string (value, quicsrcfps->log_file);
       break;
     case PROP_PORT:
-      g_value_set_int (value, quicsrcgop->port);
+      g_value_set_int (value, quicsrcfps->port);
       break;
     case PROP_CAPS:
-      GST_OBJECT_LOCK (quicsrcgop);
-      gst_value_set_caps (value, quicsrcgop->caps);
-      GST_OBJECT_UNLOCK (quicsrcgop);
+      GST_OBJECT_LOCK (quicsrcfps);
+      gst_value_set_caps (value, quicsrcfps->caps);
+      GST_OBJECT_UNLOCK (quicsrcfps);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -292,43 +292,43 @@ gst_quicsrcgop_get_property (GObject * object, guint property_id,
 }
 
 void
-gst_quicsrcgop_dispose (GObject * object)
+gst_quicsrcfps_dispose (GObject * object)
 {
-  GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (object);
+  GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (object);
 
-  GST_DEBUG_OBJECT (quicsrcgop, "dispose");
+  GST_DEBUG_OBJECT (quicsrcfps, "dispose");
 
-  if (quicsrcgop->connection) {
-    GST_DEBUG_OBJECT (quicsrcgop, "dispose called, closing connection");
-    lsquic_conn_close(quicsrcgop->connection);
-    while (quicsrcgop->connection_active) {
-      gst_quic_read_packets(GST_ELEMENT(quicsrcgop), quicsrcgop->socket, quicsrcgop->engine, quicsrcgop->local_address);
+  if (quicsrcfps->connection) {
+    GST_DEBUG_OBJECT (quicsrcfps, "dispose called, closing connection");
+    lsquic_conn_close(quicsrcfps->connection);
+    while (quicsrcfps->connection_active) {
+      gst_quic_read_packets(GST_ELEMENT(quicsrcfps), quicsrcfps->socket, quicsrcfps->engine, quicsrcfps->local_address);
     }
-    quicsrcgop->connection = NULL;
+    quicsrcfps->connection = NULL;
   } else {
-    GST_DEBUG_OBJECT (quicsrcgop, "dispose called, but connection has already been closed connection");
+    GST_DEBUG_OBJECT (quicsrcfps, "dispose called, but connection has already been closed connection");
   }
 
-  if (quicsrcgop->engine) {
-    lsquic_engine_destroy(quicsrcgop->engine);
+  if (quicsrcfps->engine) {
+    lsquic_engine_destroy(quicsrcfps->engine);
   }
   lsquic_global_cleanup();
 
-  G_OBJECT_CLASS (gst_quicsrcgop_parent_class)->dispose (object);
+  G_OBJECT_CLASS (gst_quicsrcfps_parent_class)->dispose (object);
 }
 
 void
-gst_quicsrcgop_finalize (GObject * object)
+gst_quicsrcfps_finalize (GObject * object)
 {
-  GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (object);
+  GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (object);
 
-  GST_DEBUG_OBJECT (quicsrcgop, "finalize");
+  GST_DEBUG_OBJECT (quicsrcfps, "finalize");
 
   lsquic_global_cleanup();
 
   /* clean up object here */
 
-  G_OBJECT_CLASS (gst_quicsrcgop_parent_class)->finalize (object);
+  G_OBJECT_CLASS (gst_quicsrcfps_parent_class)->finalize (object);
 }
 
 /* Provides the basesrc with possible pad capabilities
@@ -337,15 +337,15 @@ gst_quicsrcgop_finalize (GObject * object)
    return either ANY caps or, if provided, the caps of the
    downstream element */
 static GstCaps *
-gst_quicsrcgop_get_caps (GstBaseSrc * src, GstCaps * filter)
+gst_quicsrcfps_get_caps (GstBaseSrc * src, GstCaps * filter)
 {
-  GstQuicsrcgop *quicsrcgop;
+  GstQuicsrcfps *quicsrcfps;
   GstCaps *caps, *result;
 
-  quicsrcgop = GST_QUICSRCGOP (src);
+  quicsrcfps = GST_QUICSRCFPS (src);
 
   GST_OBJECT_LOCK (src);
-  if ((caps = quicsrcgop->caps))
+  if ((caps = quicsrcfps->caps))
     gst_caps_ref (caps);
   GST_OBJECT_UNLOCK (src);
 
@@ -360,51 +360,51 @@ gst_quicsrcgop_get_caps (GstBaseSrc * src, GstCaps * filter)
     result = (filter) ? gst_caps_ref (filter) : gst_caps_new_any ();
   }
 
-  GST_DEBUG_OBJECT (quicsrcgop, "returning caps %" GST_PTR_FORMAT, caps);
+  GST_DEBUG_OBJECT (quicsrcfps, "returning caps %" GST_PTR_FORMAT, caps);
   g_assert (GST_IS_CAPS (result));
   return result;
 }
 
 static lsquic_conn_ctx_t *
-gst_quicsrcgop_on_new_conn (void *stream_if_ctx, struct lsquic_conn *conn)
+gst_quicsrcfps_on_new_conn (void *stream_if_ctx, struct lsquic_conn *conn)
 {
-  GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (stream_if_ctx);
-  GST_DEBUG_OBJECT(quicsrcgop,"MW: Connection created");
-  return (void *) quicsrcgop;
+  GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (stream_if_ctx);
+  GST_DEBUG_OBJECT(quicsrcfps,"MW: Connection created");
+  return (void *) quicsrcfps;
 }
 
 static void
-gst_quicsrcgop_on_hsk_done(lsquic_conn_t *conn, enum lsquic_hsk_status status) 
+gst_quicsrcfps_on_hsk_done(lsquic_conn_t *conn, enum lsquic_hsk_status status) 
 {
-  GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP ((void *) lsquic_conn_get_ctx(conn));
+  GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS ((void *) lsquic_conn_get_ctx(conn));
 
     switch (status)
     {
     case LSQ_HSK_OK:
     case LSQ_HSK_RESUMED_OK:
-        GST_DEBUG_OBJECT(quicsrcgop, "MW: Handshake completed successfully");
-        quicsrcgop->connection_active = TRUE;
+        GST_DEBUG_OBJECT(quicsrcfps, "MW: Handshake completed successfully");
+        quicsrcfps->connection_active = TRUE;
         break;
     default:
-        GST_ELEMENT_ERROR (quicsrcgop, RESOURCE, OPEN_READ, (NULL),
+        GST_ELEMENT_ERROR (quicsrcfps, RESOURCE, OPEN_READ, (NULL),
           ("Handshake with server failed"));
         break;
     }
 }
 
 static void
-gst_quicsrcgop_on_conn_closed (struct lsquic_conn *conn)
+gst_quicsrcfps_on_conn_closed (struct lsquic_conn *conn)
 {
-    GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP ((void *) lsquic_conn_get_ctx(conn));
+    GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS ((void *) lsquic_conn_get_ctx(conn));
 
-    GST_DEBUG_OBJECT(quicsrcgop, "MW: Connection closed, send EOS on next create call");
-    quicsrcgop->connection_active = FALSE;
+    GST_DEBUG_OBJECT(quicsrcfps, "MW: Connection closed, send EOS on next create call");
+    quicsrcfps->connection_active = FALSE;
 }
 
 static lsquic_stream_ctx_t *
-gst_quicsrcgop_on_new_stream (void *stream_if_ctx, struct lsquic_stream *stream)
+gst_quicsrcfps_on_new_stream (void *stream_if_ctx, struct lsquic_stream *stream)
 {
-    GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (stream_if_ctx);
+    GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (stream_if_ctx);
     lsquic_stream_wantread(stream, 1);
 
     struct stream_ctx* stream_ctx = malloc(sizeof(struct stream_ctx));
@@ -413,17 +413,17 @@ gst_quicsrcgop_on_new_stream (void *stream_if_ctx, struct lsquic_stream *stream)
     stream_ctx->processed = 0;
     stream_ctx->ready = FALSE;
     stream_ctx->data_available = FALSE;
-    stream_ctx->streamID = quicsrcgop->stream_count;
-    quicsrcgop->stream_count++;
+    stream_ctx->streamID = quicsrcfps->stream_count;
+    quicsrcfps->stream_count++;
 
-    GST_DEBUG_OBJECT(quicsrcgop, "MW: Accepted new stream for reading, ID: %u", stream_ctx->streamID);
+    GST_DEBUG_OBJECT(quicsrcfps, "MW: Accepted new stream for reading, ID: %u", stream_ctx->streamID);
 
-    quicsrcgop->stream_context_queue = g_list_append(quicsrcgop->stream_context_queue, (void *) stream_ctx);
+    quicsrcfps->stream_context_queue = g_list_append(quicsrcfps->stream_context_queue, (void *) stream_ctx);
     return (void *) stream_ctx;
 }
 
 static size_t
-gst_quicsrcgop_readf (void *ctx, const unsigned char *data, size_t len, int fin)
+gst_quicsrcfps_readf (void *ctx, const unsigned char *data, size_t len, int fin)
 {
     struct lsquic_stream *stream = (struct lsquic_stream *) ctx;
     struct stream_ctx *stream_ctx = (struct stream_ctx*) ((void *) lsquic_stream_get_ctx(stream));
@@ -445,11 +445,11 @@ gst_quicsrcgop_readf (void *ctx, const unsigned char *data, size_t len, int fin)
 }
 
 static void
-gst_quicsrcgop_on_read (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsquic_stream_ctx)
+gst_quicsrcfps_on_read (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsquic_stream_ctx)
 {
     ssize_t bytes_read;
 
-    bytes_read = lsquic_stream_readf(stream, gst_quicsrcgop_readf, stream);
+    bytes_read = lsquic_stream_readf(stream, gst_quicsrcfps_readf, stream);
     if (bytes_read < 0)
     {
         if (errno != EWOULDBLOCK) {
@@ -461,7 +461,7 @@ gst_quicsrcgop_on_read (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsqui
 
 //FIXME: This function is set up for test purposes and should probably be disbaled as we have no need to write.
 static void
-gst_quicsrcgop_on_write (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsquic_stream_ctx)
+gst_quicsrcfps_on_write (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsquic_stream_ctx)
 {
     ssize_t bytes_written;
 
@@ -491,7 +491,7 @@ gst_quicsrcgop_on_write (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsqu
 }
 
 static void
-gst_quicsrcgop_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsquic_stream_ctx)
+gst_quicsrcfps_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsquic_stream_ctx)
 {
     struct stream_ctx *stream_ctx = (struct stream_ctx*) (stream_ctx);
     GST_DEBUG("stream closed");
@@ -499,32 +499,32 @@ gst_quicsrcgop_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsqu
 
 /* Open a connection with the QUIC server */
 static gboolean
-gst_quicsrcgop_start (GstBaseSrc * src)
+gst_quicsrcfps_start (GstBaseSrc * src)
 {
   socklen_t socklen;
   struct lsquic_engine_api engine_api;
   struct lsquic_engine_settings engine_settings;
   server_addr_u server_addr;
 
-  GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (src);
+  GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (src);
 
-  GST_DEBUG_OBJECT (quicsrcgop, "start");
-  GST_DEBUG_OBJECT (quicsrcgop, "Host is: %s, port is: %d, log is: %s", quicsrcgop->host, quicsrcgop->port, quicsrcgop->log_file);
+  GST_DEBUG_OBJECT (quicsrcfps, "start");
+  GST_DEBUG_OBJECT (quicsrcfps, "Host is: %s, port is: %d, log is: %s", quicsrcfps->host, quicsrcfps->port, quicsrcfps->log_file);
 
   if (0 != lsquic_global_init(LSQUIC_GLOBAL_CLIENT))
   {
-    GST_ELEMENT_ERROR (quicsrcgop, LIBRARY, INIT,
+    GST_ELEMENT_ERROR (quicsrcfps, LIBRARY, INIT,
         (NULL),
         ("Failed to initialise lsquic"));
     return FALSE;
   }
   
   /* Initialize logging */
-  FILE *s_log_fh = fopen(quicsrcgop->log_file, "wb");
+  FILE *s_log_fh = fopen(quicsrcfps->log_file, "wb");
 
   if (0 != lsquic_set_log_level("debug"))
   {
-    GST_ELEMENT_ERROR (quicsrcgop, LIBRARY, INIT,
+    GST_ELEMENT_ERROR (quicsrcfps, LIBRARY, INIT,
         (NULL),
         ("Failed to initialise lsquic"));
     return FALSE;
@@ -571,36 +571,36 @@ gst_quicsrcgop_start (GstBaseSrc * src)
   engine_settings.es_delay_onclose = TRUE;
 
   // Parse IP address and set port number
-  if (!gst_quic_set_addr(quicsrcgop->host, quicsrcgop->port, &server_addr))
+  if (!gst_quic_set_addr(quicsrcfps->host, quicsrcfps->port, &server_addr))
   {
-      GST_ELEMENT_ERROR (quicsrcgop, RESOURCE, OPEN_READ, (NULL),
-        ("Failed to resolve host: %s", quicsrcgop->host));
+      GST_ELEMENT_ERROR (quicsrcfps, RESOURCE, OPEN_READ, (NULL),
+        ("Failed to resolve host: %s", quicsrcfps->host));
       return FALSE;
   }
 
   // Create socket
-  quicsrcgop->socket = socket(server_addr.sa.sa_family, SOCK_DGRAM, 0);
+  quicsrcfps->socket = socket(server_addr.sa.sa_family, SOCK_DGRAM, 0);
 
-  if (quicsrcgop->socket < 0)
+  if (quicsrcfps->socket < 0)
   {
-    GST_ELEMENT_ERROR (quicsrcgop, RESOURCE, OPEN_READ, (NULL),
+    GST_ELEMENT_ERROR (quicsrcfps, RESOURCE, OPEN_READ, (NULL),
       ("Failed to open socket"));
     return FALSE;
   }
 
   // set socket to be non-blocking
-  int socket_flags = fcntl(quicsrcgop->socket, F_GETFL);
+  int socket_flags = fcntl(quicsrcfps->socket, F_GETFL);
   if (socket_flags == -1) 
   {
-    GST_ELEMENT_ERROR (quicsrcgop, RESOURCE, OPEN_READ, (NULL),
+    GST_ELEMENT_ERROR (quicsrcfps, RESOURCE, OPEN_READ, (NULL),
         ("Failed to retrieve socket_flags using fcntl"));
     return FALSE;
   }
 
   socket_flags |= O_NONBLOCK;
-  if (0 != fcntl(quicsrcgop->socket, F_SETFL, socket_flags)) 
+  if (0 != fcntl(quicsrcfps->socket, F_SETFL, socket_flags)) 
   {
-    GST_ELEMENT_ERROR (quicsrcgop, RESOURCE, OPEN_READ, (NULL),
+    GST_ELEMENT_ERROR (quicsrcfps, RESOURCE, OPEN_READ, (NULL),
         ("Failed to set socket_flags using fcntl"));
     return FALSE;
   }
@@ -611,26 +611,26 @@ gst_quicsrcgop_start (GstBaseSrc * src)
   activate = 1;
   if (AF_INET == server_addr.sa.sa_family)
   {
-      socket_opt_result = setsockopt(quicsrcgop->socket, IPPROTO_IP, IP_RECVTOS, &activate, sizeof(activate));
+      socket_opt_result = setsockopt(quicsrcfps->socket, IPPROTO_IP, IP_RECVTOS, &activate, sizeof(activate));
   }
   else
   {
-      socket_opt_result = setsockopt(quicsrcgop->socket, IPPROTO_IPV6, IPV6_RECVTCLASS, &activate, sizeof(activate));
+      socket_opt_result = setsockopt(quicsrcfps->socket, IPPROTO_IPV6, IPV6_RECVTCLASS, &activate, sizeof(activate));
   }
 
   if (0 != socket_opt_result) {
-    GST_ELEMENT_ERROR (quicsrcgop, RESOURCE, OPEN_READ, (NULL),
+    GST_ELEMENT_ERROR (quicsrcfps, RESOURCE, OPEN_READ, (NULL),
         ("Failed to add ecn support using setsockopt"));
     return FALSE;
   }
 
   // Bind local address to socket.
-  quicsrcgop->local_address.ss_family = server_addr.sa.sa_family;
-  socklen = sizeof(quicsrcgop->local_address);
-  if (0 != bind(quicsrcgop->socket,
-                  (struct sockaddr *) &(quicsrcgop->local_address), socklen))
+  quicsrcfps->local_address.ss_family = server_addr.sa.sa_family;
+  socklen = sizeof(quicsrcfps->local_address);
+  if (0 != bind(quicsrcfps->socket,
+                  (struct sockaddr *) &(quicsrcfps->local_address), socklen))
   {
-      GST_ELEMENT_ERROR (quicsrcgop, RESOURCE, OPEN_READ, (NULL),
+      GST_ELEMENT_ERROR (quicsrcfps, RESOURCE, OPEN_READ, (NULL),
         ("Failed to bind socket"));
       return FALSE;
   }
@@ -638,56 +638,56 @@ gst_quicsrcgop_start (GstBaseSrc * src)
   // Initialize engine callbacks
   memset(&engine_api, 0, sizeof(engine_api));
   engine_api.ea_packets_out = gst_quic_send_packets;
-  engine_api.ea_packets_out_ctx = quicsrcgop;
-  engine_api.ea_stream_if   = &quicsrcgop_callbacks;
-  engine_api.ea_stream_if_ctx = quicsrcgop;
+  engine_api.ea_packets_out_ctx = quicsrcfps;
+  engine_api.ea_stream_if   = &quicsrcfps_callbacks;
+  engine_api.ea_stream_if_ctx = quicsrcfps;
   engine_api.ea_settings = &engine_settings;
 
   // Instantiate engine in client mode
-  quicsrcgop->engine = lsquic_engine_new(QUIC_CLIENT, &engine_api);
-  if (!quicsrcgop->engine)
+  quicsrcfps->engine = lsquic_engine_new(QUIC_CLIENT, &engine_api);
+  if (!quicsrcfps->engine)
   {
-      GST_ELEMENT_ERROR (quicsrcgop, RESOURCE, OPEN_READ, (NULL),
+      GST_ELEMENT_ERROR (quicsrcfps, RESOURCE, OPEN_READ, (NULL),
         ("Failed to create lsquic engine"));
       return FALSE;
   }
 
 
-  GST_DEBUG_OBJECT(quicsrcgop, "Creating connection to server at %s:%d", quicsrcgop->host, quicsrcgop->port);
+  GST_DEBUG_OBJECT(quicsrcfps, "Creating connection to server at %s:%d", quicsrcfps->host, quicsrcfps->port);
   // Create connection
-  quicsrcgop->connection = lsquic_engine_connect(
-      quicsrcgop->engine, LSQVER_I001,
-      (struct sockaddr *) &(quicsrcgop->local_address), &server_addr.sa,
-      (void *) (uintptr_t) quicsrcgop->socket,  /* Peer ctx */
+  quicsrcfps->connection = lsquic_engine_connect(
+      quicsrcfps->engine, LSQVER_I001,
+      (struct sockaddr *) &(quicsrcfps->local_address), &server_addr.sa,
+      (void *) (uintptr_t) quicsrcfps->socket,  /* Peer ctx */
       NULL, NULL, 0, NULL, 0, NULL, 0);
-  if (!quicsrcgop->connection)
+  if (!quicsrcfps->connection)
   {
-    GST_ELEMENT_ERROR (quicsrcgop, RESOURCE, OPEN_READ, (NULL),
+    GST_ELEMENT_ERROR (quicsrcfps, RESOURCE, OPEN_READ, (NULL),
       ("Failed to create QUIC connection to server"));
       return FALSE;
   }
 
-  lsquic_engine_process_conns(quicsrcgop->engine);
+  lsquic_engine_process_conns(quicsrcfps->engine);
 
-  while (!quicsrcgop->connection_active) {
-    gst_quic_read_packets(GST_ELEMENT(quicsrcgop), quicsrcgop->socket, quicsrcgop->engine, quicsrcgop->local_address);
+  while (!quicsrcfps->connection_active) {
+    gst_quic_read_packets(GST_ELEMENT(quicsrcfps), quicsrcfps->socket, quicsrcfps->engine, quicsrcfps->local_address);
   }
 
-  g_timeout_add(1, tick_connection, quicsrcgop);
+  g_timeout_add(1, tick_connection, quicsrcfps);
   
 
   return TRUE;
 }
 
 static gboolean
-gst_quicsrcgop_stop (GstBaseSrc * src)
+gst_quicsrcfps_stop (GstBaseSrc * src)
 {
-  GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (src);
+  GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (src);
 
-  GST_DEBUG_OBJECT (quicsrcgop, "stop called, closing connection");
-  if (quicsrcgop->connection && quicsrcgop->connection_active) 
+  GST_DEBUG_OBJECT (quicsrcfps, "stop called, closing connection");
+  if (quicsrcfps->connection && quicsrcfps->connection_active) 
   {
-    lsquic_conn_close(quicsrcgop->connection);
+    lsquic_conn_close(quicsrcfps->connection);
   }
 
   return TRUE;
@@ -696,22 +696,22 @@ gst_quicsrcgop_stop (GstBaseSrc * src)
 // /* given a buffer, return start and stop time when it should be pushed
 //  * out. The base class will sync on the clock using these times. */
 // static void
-// gst_quicsrcgop_get_times (GstBaseSrc * src, GstBuffer * buffer,
+// gst_quicsrcfps_get_times (GstBaseSrc * src, GstBuffer * buffer,
 //     GstClockTime * start, GstClockTime * end)
 // {
-//   GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (src);
+//   GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (src);
 
-//   GST_DEBUG_OBJECT (quicsrcgop, "get_times");
+//   GST_DEBUG_OBJECT (quicsrcfps, "get_times");
 
 // }
 
 // /* get the total size of the resource in bytes */
 // static gboolean
-// gst_quicsrcgop_get_size (GstBaseSrc * src, guint64 * size)
+// gst_quicsrcfps_get_size (GstBaseSrc * src, guint64 * size)
 // {
-//   GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (src);
+//   GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (src);
 
-//   GST_DEBUG_OBJECT (quicsrcgop, "get_size");
+//   GST_DEBUG_OBJECT (quicsrcfps, "get_size");
 
 //   return TRUE;
 // }
@@ -719,33 +719,33 @@ gst_quicsrcgop_stop (GstBaseSrc * src)
 /* unlock any pending access to the resource. subclasses should unlock
  * any function ASAP. */
 static gboolean
-gst_quicsrcgop_unlock (GstBaseSrc * src)
+gst_quicsrcfps_unlock (GstBaseSrc * src)
 {
-  GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (src);
+  GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (src);
 
-  GST_DEBUG_OBJECT (quicsrcgop, "unlock");
+  GST_DEBUG_OBJECT (quicsrcfps, "unlock");
 
   return TRUE;
 }
 
 /* Clear any pending unlock request, as we succeeded in unlocking */
 static gboolean
-gst_quicsrcgop_unlock_stop (GstBaseSrc * src)
+gst_quicsrcfps_unlock_stop (GstBaseSrc * src)
 {
-  GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (src);
+  GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (src);
 
-  GST_DEBUG_OBJECT (quicsrcgop, "unlock_stop");
+  GST_DEBUG_OBJECT (quicsrcfps, "unlock_stop");
 
   return TRUE;
 }
 
 /* notify subclasses of an event */
 static gboolean
-gst_quicsrcgop_event (GstBaseSrc * src, GstEvent * event)
+gst_quicsrcfps_event (GstBaseSrc * src, GstEvent * event)
 {
-  GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (src);
+  GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (src);
 
-  GST_DEBUG_OBJECT (quicsrcgop, "event");
+  GST_DEBUG_OBJECT (quicsrcfps, "event");
 
   return TRUE;
 }
@@ -753,9 +753,9 @@ gst_quicsrcgop_event (GstBaseSrc * src, GstEvent * event)
 /* ask the subclass to create a buffer with offset and size, the default
  * implementation will call alloc and fill. */
 static GstFlowReturn
-gst_quicsrcgop_create (GstPushSrc * src, GstBuffer ** outbuf)
+gst_quicsrcfps_create (GstPushSrc * src, GstBuffer ** outbuf)
 {
-  GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (src);
+  GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (src);
   GstMapInfo map;
   gboolean new_data = FALSE;
   GList * stream_context_queue = NULL;
@@ -764,21 +764,21 @@ gst_quicsrcgop_create (GstPushSrc * src, GstBuffer ** outbuf)
   struct stream_ctx* current_stream = NULL;
   guint16 next_packet_length = 0;
 
-  if (!quicsrcgop->connection_active) {
+  if (!quicsrcfps->connection_active) {
     return GST_FLOW_EOS;
   }
 
-  GST_DEBUG_OBJECT(quicsrcgop, "Create Called");
+  GST_DEBUG_OBJECT(quicsrcfps, "Create Called");
 
   // Iterate through all of our stream conetexts to find complete streams.
   // The first completed stream found is converted to a buffer and pushed downstream
   // If no completed streams are available, we will read packets until one is
-  stream_context_queue = quicsrcgop->stream_context_queue;
+  stream_context_queue = quicsrcfps->stream_context_queue;
   while (stream_context_queue != NULL) {
     current_stream =  ((struct stream_ctx*) (stream_context_queue->data));
     if (current_stream->ready) {
       // Free resources from stream context if we have reached end of stream
-      quicsrcgop->stream_context_queue = g_list_remove_link (quicsrcgop->stream_context_queue, stream_context_queue);
+      quicsrcfps->stream_context_queue = g_list_remove_link (quicsrcfps->stream_context_queue, stream_context_queue);
       GList * temp = stream_context_queue->next;
       free(current_stream->buffer);
       free(current_stream);
@@ -798,16 +798,16 @@ gst_quicsrcgop_create (GstPushSrc * src, GstBuffer ** outbuf)
     }
   }
 
-  GST_OBJECT_LOCK(quicsrcgop);
-  while (!new_data && quicsrcgop->connection_active)
+  GST_OBJECT_LOCK(quicsrcfps);
+  while (!new_data && quicsrcfps->connection_active)
   {
-    gst_quic_read_packets(GST_ELEMENT(quicsrcgop), quicsrcgop->socket, quicsrcgop->engine, quicsrcgop->local_address);
-    stream_context_queue = quicsrcgop->stream_context_queue;
+    gst_quic_read_packets(GST_ELEMENT(quicsrcfps), quicsrcfps->socket, quicsrcfps->engine, quicsrcfps->local_address);
+    stream_context_queue = quicsrcfps->stream_context_queue;
     while (stream_context_queue != NULL) {
       current_stream =  ((struct stream_ctx*) (stream_context_queue->data));
       if (current_stream->ready) {
         // Free resources from stream context if we have reached end of stream
-        quicsrcgop->stream_context_queue = g_list_remove_link (quicsrcgop->stream_context_queue, stream_context_queue);
+        quicsrcfps->stream_context_queue = g_list_remove_link (quicsrcfps->stream_context_queue, stream_context_queue);
         GList * temp = stream_context_queue->next;
         free(current_stream->buffer);
         free(current_stream);
@@ -830,10 +830,10 @@ gst_quicsrcgop_create (GstPushSrc * src, GstBuffer ** outbuf)
       }
     }
   }
-  GST_OBJECT_UNLOCK(quicsrcgop);
+  GST_OBJECT_UNLOCK(quicsrcfps);
 
   // Connection may close while we are trying to read.
-  if (!quicsrcgop->connection_active) {
+  if (!quicsrcfps->connection_active) {
     return GST_FLOW_EOS;
   }
 
@@ -842,7 +842,7 @@ gst_quicsrcgop_create (GstPushSrc * src, GstBuffer ** outbuf)
   stream_to_be_processed = list_element_to_be_processed->data;
 
 
-  GST_DEBUG_OBJECT(quicsrcgop, "stream %u has a packet of size %u available", stream_to_be_processed->streamID, next_packet_length);
+  GST_DEBUG_OBJECT(quicsrcfps, "stream %u has a packet of size %u available", stream_to_be_processed->streamID, next_packet_length);
 
   *outbuf = gst_buffer_new_and_alloc(next_packet_length);
 
@@ -859,7 +859,7 @@ gst_quicsrcgop_create (GstPushSrc * src, GstBuffer ** outbuf)
 
 
 
-  GST_DEBUG_OBJECT (quicsrcgop, "Read data from stream %u. Pushing buffer of size %lu", stream_to_be_processed->streamID, gst_buffer_get_size(*outbuf));
+  GST_DEBUG_OBJECT (quicsrcfps, "Read data from stream %u. Pushing buffer of size %lu", stream_to_be_processed->streamID, gst_buffer_get_size(*outbuf));
 
   return GST_FLOW_OK;
 }

@@ -399,7 +399,9 @@ gst_quicsrcpps_on_new_stream (void *stream_if_ctx, struct lsquic_stream *stream)
     struct stream_ctx* stream_ctx = malloc(sizeof(struct stream_ctx));
     stream_ctx->buffer = malloc(READ_BUFFER_SIZE);
     stream_ctx->offset = 0;
+    stream_ctx->processed = 0;
     stream_ctx->ready = FALSE;
+    stream_ctx->data_available = FALSE;
     stream_ctx->streamID = quicsrcpps->stream_count;
     quicsrcpps->stream_count++;
 

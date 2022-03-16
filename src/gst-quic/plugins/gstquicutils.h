@@ -58,8 +58,10 @@ struct server_stream_ctx
 struct stream_ctx
 {
     gsize   offset;           /* Number of bytes read from stream */
+    gsize   processed;        /* Number of bytes that the QUIC src element has processed */
     gchar* buffer;
     gboolean ready;           /* set when stream has been read to completion */
+    gboolean data_available;
     guint streamID;
 };
 
