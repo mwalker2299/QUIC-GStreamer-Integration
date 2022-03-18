@@ -433,7 +433,7 @@ static void gst_quicsink_on_write (struct lsquic_stream *stream, lsquic_stream_c
     const gsize buffer_size = quicsink->stream_ctx.buffer_size;
     gssize bytes_written;
 
-    GST_DEBUG_OBJECT(quicsink, "MW: writing to stream, total buffer size = (%lu bytes)", buffer_size);
+    // GST_DEBUG_OBJECT(quicsink, "MW: writing to stream, total buffer size = (%lu bytes)", buffer_size);
 
     bytes_written = lsquic_stream_writef(stream, &buffer_reader);
     if (bytes_written > 0)
@@ -455,7 +455,7 @@ static void gst_quicsink_on_write (struct lsquic_stream *stream, lsquic_stream_c
 static void gst_quicsink_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx)
 {
   GstQuicsink *quicsink = GST_QUICSINK (stream_ctx);
-  GST_DEBUG_OBJECT(quicsink, "MW: stream closed");
+  // GST_DEBUG_OBJECT(quicsink, "MW: stream closed");
 }
 
 static void

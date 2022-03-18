@@ -736,7 +736,7 @@ gst_quicsrc_event (GstBaseSrc * src, GstEvent * event)
 {
   GstQuicsrc *quicsrc = GST_QUICSRC (src);
 
-  GST_DEBUG_OBJECT (quicsrc, "event");
+  // GST_DEBUG_OBJECT (quicsrc, "event");
 
   return TRUE;
 }

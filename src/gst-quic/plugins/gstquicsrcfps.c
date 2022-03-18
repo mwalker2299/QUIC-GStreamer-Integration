@@ -745,7 +745,7 @@ gst_quicsrcfps_event (GstBaseSrc * src, GstEvent * event)
 {
   GstQuicsrcfps *quicsrcfps = GST_QUICSRCFPS (src);
 
-  GST_DEBUG_OBJECT (quicsrcfps, "event");
+  // GST_DEBUG_OBJECT (quicsrcfps, "event");
 
   return TRUE;
 }
@@ -768,15 +768,13 @@ gst_quicsrcfps_create (GstPushSrc * src, GstBuffer ** outbuf)
     return GST_FLOW_EOS;
   }
 
-  GST_DEBUG_OBJECT(quicsrcfps, "Create Called");
-
   // Iterate through all of our stream conetexts to find complete streams.
   // The first completed stream found is converted to a buffer and pushed downstream
   // If no completed streams are available, we will read packets until one is
   stream_context_queue = quicsrcfps->stream_context_queue;
   while (stream_context_queue != NULL) {
     current_stream =  ((struct stream_ctx*) (stream_context_queue->data));
-    if (current_stream->ready) {
+    if (current_stream->ready && current_stream->processed == current_stream->offset) {
       // Free resources from stream context if we have reached end of stream
       quicsrcfps->stream_context_queue = g_list_remove_link (quicsrcfps->stream_context_queue, stream_context_queue);
       GList * temp = stream_context_queue->next;
@@ -805,7 +803,7 @@ gst_quicsrcfps_create (GstPushSrc * src, GstBuffer ** outbuf)
     stream_context_queue = quicsrcfps->stream_context_queue;
     while (stream_context_queue != NULL) {
       current_stream =  ((struct stream_ctx*) (stream_context_queue->data));
-      if (current_stream->ready) {
+      if (current_stream->ready && current_stream->processed == current_stream->offset) {
         // Free resources from stream context if we have reached end of stream
         quicsrcfps->stream_context_queue = g_list_remove_link (quicsrcfps->stream_context_queue, stream_context_queue);
         GList * temp = stream_context_queue->next;
@@ -840,9 +838,6 @@ gst_quicsrcfps_create (GstPushSrc * src, GstBuffer ** outbuf)
 
   // Create buffer from stream context
   stream_to_be_processed = list_element_to_be_processed->data;
-
-
-  GST_DEBUG_OBJECT(quicsrcfps, "stream %u has a packet of size %u available", stream_to_be_processed->streamID, next_packet_length);
 
   *outbuf = gst_buffer_new_and_alloc(next_packet_length);
 

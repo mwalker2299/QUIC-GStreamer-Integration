@@ -724,7 +724,7 @@ gst_quicsrcpps_event (GstBaseSrc * src, GstEvent * event)
 {
   GstQuicsrcpps *quicsrcpps = GST_QUICSRCPPS (src);
 
-  GST_DEBUG_OBJECT (quicsrcpps, "event");
+  // GST_DEBUG_OBJECT (quicsrcpps, "event");
 
   return TRUE;
 }

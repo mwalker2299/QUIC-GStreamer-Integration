@@ -433,7 +433,7 @@ static void gst_quicsinkfps_on_write (struct lsquic_stream *stream, lsquic_strea
     const gsize buffer_size = quicsinkfps->stream_ctx.buffer_size;
     gssize bytes_written;
 
-    GST_DEBUG_OBJECT(quicsinkfps, "MW: writing to stream, total buffer size = (%lu bytes)", buffer_size);
+    // GST_DEBUG_OBJECT(quicsinkfps, "MW: writing to stream, total buffer size = (%lu bytes)", buffer_size);
 
     bytes_written = lsquic_stream_writef(stream, &buffer_reader);
     if (bytes_written > 0)
@@ -455,7 +455,7 @@ static void gst_quicsinkfps_on_write (struct lsquic_stream *stream, lsquic_strea
 static void gst_quicsinkfps_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx)
 {
   GstQuicsinkfps *quicsinkfps = GST_QUICSINKFPS (stream_ctx);
-  GST_DEBUG_OBJECT(quicsinkfps, "MW: stream closed");
+  // GST_DEBUG_OBJECT(quicsinkfps, "MW: stream closed");
 }
 
 static void
@@ -474,6 +474,7 @@ gst_quicsinkfps_init (GstQuicsinkfps * quicsinkfps)
   quicsinkfps->connection = NULL;
   quicsinkfps->stream = NULL;
   quicsinkfps->ssl_ctx = NULL;
+  quicsinkfps->prev_buffer_pts = -1;
   
   memset(&quicsinkfps->stream_ctx, 0, sizeof(quicsinkfps->stream_ctx));
 }
@@ -1015,10 +1016,11 @@ gst_quicsinkfps_render (GstBaseSink * sink, GstBuffer * buffer)
   } 
 
   GST_DEBUG_OBJECT (quicsinkfps, "render -- duration: %" GST_TIME_FORMAT ",  dts: %" GST_TIME_FORMAT ",  pts: %" GST_TIME_FORMAT", GREP_MARKER pts: %lu", GST_TIME_ARGS(buffer->duration), GST_TIME_ARGS(buffer->dts), GST_TIME_ARGS(buffer->pts), buffer->pts-3600000000000000);
-  if (((buffer->pts-3600000000000000) % 41666666) == 0) {
+  if ((((buffer->pts-3600000000000000) % 41666666) == 0) && (buffer->pts != quicsinkfps->prev_buffer_pts)) {
     GST_DEBUG_OBJECT (quicsinkfps, "We have received a new frame");
     start_frame = TRUE;
   }
+  quicsinkfps->prev_buffer_pts = buffer->pts;
 
   
 

@@ -84,6 +84,9 @@ struct _GstQuicsinkfps
 
   /* stream context */
   struct server_stream_ctx stream_ctx;
+
+  /* previous buffer pts, used to determine start of a new frame */
+  GstClockTime prev_buffer_pts;
 };
 
 struct _GstQuicsinkfpsClass
