@@ -395,15 +395,29 @@ def extract_rtp_data_from_quic_stream_available(filename):
 
 
     for line in rtp_file:
-      if "<MISSING>" in line:
-        continue
       line_contents = str.split(line)
       if len(line_contents) >= 8:
         if len(line_contents) == 8:
-          # For some reason, when the stream offset is zero,
-          # tshark does not add zero to the output, but instead leaves a blank space
-          # We add the zero manually here
-          line_contents.insert(6, 0)
+          if "<MISSING>" in line:
+            continue
+          else:
+            # For some reason, when the stream offset is zero,
+            # tshark does not add zero to the output, but instead leaves a blank space
+            # We add the zero manually here
+            line_contents.insert(6, 0)
+
+        else:
+          if "<MISSING>" in line:
+            if len(str.split(line_contents[7], ',')) > 1:
+              line_contents[5] = str.split(line_contents[5], ',')[1]
+              line_contents[6] = 0
+              line_contents[7] = str.split(line_contents[7], ',')[1]
+              line_contents[8] = str.split(line_contents[8], ',')[1]
+            else:
+              continue
+
+        # print(line_contents)
+
         datetime_format = datetime.strptime(line_contents[3][:-3], '%H:%M:%S.%f')
         time_in_milliseconds = datetime_format.timestamp() * 1000
 
@@ -512,15 +526,26 @@ def extract_rtp_data_from_quic_stream_arrival(filename):
     # as we go. This is slow but I cannot think of a better way to 
     # extract the arrival time
     for line in rtp_file:
-      if "<MISSING>" in line:
-        continue
       line_contents = str.split(line)
       if len(line_contents) >= 8:
         if len(line_contents) == 8:
-          # For some reason, when the stream offset is zero,
-          # tshark does not add zero to the output, but instead leaves a blank space
-          # We add the zero manually here
-          line_contents.insert(6, 0)
+          if "<MISSING>" in line:
+            continue
+          else:
+            # For some reason, when the stream offset is zero,
+            # tshark does not add zero to the output, but instead leaves a blank space
+            # We add the zero manually here
+            line_contents.insert(6, 0)
+
+        else:
+          if "<MISSING>" in line:
+            if len(str.split(line_contents[7], ',')) > 1:
+              line_contents[5] = str.split(line_contents[5], ',')[1]
+              line_contents[6] = 0
+              line_contents[7] = str.split(line_contents[7], ',')[1]
+              line_contents[8] = str.split(line_contents[8], ',')[1]
+            else:
+              continue
         
         datetime_format = datetime.strptime(line_contents[3][:-3], '%H:%M:%S.%f')
         time_in_milliseconds = datetime_format.timestamp() * 1000
