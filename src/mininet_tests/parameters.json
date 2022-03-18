@@ -2,8 +2,8 @@
   "parameters": {
     "delay": [10,30,50,100,150],
     "loss": [0,0.1,1,5,10],
-    "jitter": [0,30],
-    "buffer_delay": [42,84,126,168,1000],
+    "jitter": [0],
+    "buffer_delay": [42,84,126,168],
     "bandwidth": [1000],
     "cross_traffic": [0]
   }
