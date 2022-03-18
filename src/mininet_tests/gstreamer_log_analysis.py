@@ -261,7 +261,7 @@ def calculate_frame_time_diffs(frame_arrival, frame_depature):
     if depature_count < len(frame_depature):
       frame_decode_pts         = frame_depature[depature_count][0]
       frame_depature_timestamp = frame_depature[depature_count][1]
-      frame_decode_pts_in_milliseconds = (datetime.strptime(frame_decode_pts[2:-3], '%M:%S.%f')).timestamp() * 1000
+      frame_decode_pts_in_milliseconds = ((datetime.strptime(frame_decode_pts[2:-3], '%M:%S.%f')).timestamp() * 1000)+0.1 #PTS within client side logs has been reduced by 1 microsecond, not sure why this happens.
 
 
     if depature_count < len(frame_depature) and frame_decode_pts_in_milliseconds >= frame_base_pts_in_milliseconds and frame_decode_pts_in_milliseconds < (frame_base_pts_in_milliseconds + 1000/24):
