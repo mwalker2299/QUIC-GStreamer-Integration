@@ -445,3 +445,31 @@ No work was done during week 9, 10 and part of 11 as I was focused on coursework
 * *3.00 hours* Fixed an issue where lsquic would continue to send new streams during the BBR RTT ptobing phase, extending the phase greatly. This is actually what caused a previous the retx time to be much higher than it should originally, so that fix has been removed in favour of preventing lsquic from sending data when new streams are created if we are in PROBE RTT mode. I have also turned off lsquic's pacer as we do our own pacing.
 * *4.00 hours* During PROBE RTT periods, QUIC PPS will stop sending, this introduces a delay adn the jitterbuffer will not notice late packets as subsequent packets will not arrive. I attempted to modify the HOL code to work with QUIC PPS to prevent this issue. However, I could not get this to work and decided that the impact of the PROBE RTT periods on jitterbuffers would be an interesting talking point, so i reverted to the old method.
 * *1.00 hours* An issue began appearing where lsquic would not send packets before it recieived an acknowledgement of the last handshake packet. This was a problem as the jitterbuffer relies on the arrival of the first packet for timing info. I have added extra code to the identity such that it delays the first buffer by 200ms, enough time to recieved the handshake. This required the additon of a second identity element, to keep nal units in sync with the inital 200ms delay.
+
+### 6th MAR 2022
+
+* *3.00 hours* Sketched out structure for the dissertation and wrote introduction.
+
+### 7th MAR 2022
+
+* *9.00 hours* Wrote first draft of dissertation for review by Colin.
+
+### 13th MAR 2022
+
+* *8.00 hours* Re wrote dissertation so that the "why" is made clear before tackling the "how".
+
+### 16th MAR 2022
+
+* *3.00 hours* Created QUIC_FPS elements. In the process I noticed a flaw in the QUIC_GOP elements, they would not pass data to the app until the full stream has closed. Reworked both elements such that data would be passed immediately.
+* *0.50 hours* Meeting with Colin
+* *0.25 hours* Added minutes and plan to appropriate meeting file
+* *3.00 hours* Began adapting the jitterbuffer so that it would work with the new QUIC_GOP and QUIC_FPS elements. Previously, for elements that can have the potential for HOL blocking, the jitter buffer assumed that all packets would arrive in order.
+
+### 17th MAR 2022
+
+* *6.00 hours* Finished adapting jitter buffer, greatly improving the handling of delayed or lost packets.
+* *2.00 hours* Fixed bug where frames would be delayed by 1/24 of a second before transmission.
+
+### 18th MAR 2022
+
+* *4.00 hours* Completed final checks before launching another test run. the jitterbuffer was struggling with creating timers for a full frames worth of packets in the scenario that all PTS values were the same. I have updated the jitterbuffer such that it will wait atleast 2/3 of a millisecond before starting the next timer.
