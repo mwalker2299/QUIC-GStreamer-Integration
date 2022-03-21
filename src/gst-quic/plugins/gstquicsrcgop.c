@@ -549,14 +549,18 @@ gst_quicsrcgop_start (GstBaseSrc * src)
 
 	engine_settings.es_pace_packets = FALSE;
 
-  /// The initial stream flow control offset on the client side is 16384.
+  // The initial stream flow control offset on the client side is 16384.
   // However, the server appears to begin with a much higher max send offset
   // It should be zero, but instead it's 6291456. We can force lsquic to behave
   // by setting the following to parameters. Initially, I experiemented with
   // setting these values to 16384, but, as lsquic waits until we have read up
   // to half the stream flow control offset, this causes the window to grow too slowly.
-  engine_settings.es_init_max_stream_data_bidi_local = 16384*4;
-  engine_settings.es_init_max_stream_data_bidi_remote = 16384*4;
+  // UPDATE: After changing to the BBB video, the previously discovered values were no longer 
+  // suitable, As time was short and I did not want to risk tests being impacted by stream flow 
+  // control, I have instead opted to raise the initial max stream data to 200000, which is the maximum 
+  // stream flow allowance used by a stream during GOP runs.
+  engine_settings.es_init_max_stream_data_bidi_local = 200000;
+  engine_settings.es_init_max_stream_data_bidi_remote = 200000;
 
   // Using the default values (es_max_streams_in = 50, es_init_max_streams_bidi=100), the max number of streams grows at too little a rate
   // when we are creating a new packet per stream. This results in significant delays

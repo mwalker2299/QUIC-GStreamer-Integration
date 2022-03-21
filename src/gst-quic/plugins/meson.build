@@ -21,8 +21,8 @@ boringssl_inc = include_directories('/home/matt/Documents/boringssl/include')
 
 # The quic Plugin
  gstquic_sources = [
-  'gstquicsrc.c',
-  'gstquicsink.c',
+  'gstquicsrcss.c',
+  'gstquicsinkss.c',
   'gstquicsrcpps.c',
   'gstquicsinkpps.c',
   'gstquicsrcgop.c',

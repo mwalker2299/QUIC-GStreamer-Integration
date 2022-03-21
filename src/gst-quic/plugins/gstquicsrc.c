@@ -554,8 +554,12 @@ gst_quicsrc_start (GstBaseSrc * src)
   // by setting the following to parameters. Initially, I experiemented with
   // setting these values to 16384, but, as lsquic waits until we have read up
   // to half the stream flow control offset, this causes the window to grow too slowly.
-  engine_settings.es_init_max_stream_data_bidi_local = 16384*4;
-  engine_settings.es_init_max_stream_data_bidi_remote = 16384*4;
+  // UPDATE: After changing to the BBB video, the previously discovered values were no longer 
+  // suitable, As time was short and I did not want to risk tests being impacted by stream flow 
+  // control, I have instead opted to raise the initial max stream data to 9453766, which is the 
+  // final stream flow control allowance at the end of a SS run.
+  engine_settings.es_init_max_stream_data_bidi_local = 9453766;
+  engine_settings.es_init_max_stream_data_bidi_remote = 9453766;
 
   // We don't want to close the connection until all data has been acknowledged.
   // So we set es_delay_onclose to true
