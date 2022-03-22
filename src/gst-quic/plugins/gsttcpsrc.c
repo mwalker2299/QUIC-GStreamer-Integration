@@ -40,7 +40,7 @@
 
 #define TCP_DEFAULT_PORT 5000
 #define TCP_DEFAULT_HOST "127.0.0.1"
-#define TCP_DEFAULT_READ_SIZE 10000
+#define RTP_LENGTH_FIELD_SIZE 2
 
 GST_DEBUG_CATEGORY_STATIC (gst_tcpsrc_debug_category);
 #define GST_CAT_DEFAULT gst_tcpsrc_debug_category
@@ -414,41 +414,58 @@ gst_tcpsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
   GstTcpsrc *tcpsrc = GST_TCPSRC (src);
   GstMapInfo map;
   gboolean new_data = FALSE;
-  gint data_availiable = 0;
+  gchar rtp_packet_length_field_buffer[2];
   gsize bytes_read = 0;
 
   if (!tcpsrc->connection_active) {
     return GST_FLOW_EOS;
   }
 
-  // Check to see how much data is availiable
-  if (ioctl(tcpsrc->socket, FIONREAD, &data_availiable) == -1)
-  {
-    GST_ELEMENT_ERROR (tcpsrc, RESOURCE, OPEN_READ, (NULL),
-        ("Error when calling ioctl: %d", errno));
-    return FALSE;
+
+  // For each packet, we first read two bytes to get the length, then we continuously
+  // call recv until that much data has been read before pushing the buffer.
+  *outbuf = gst_buffer_new_and_alloc(2000);
+
+  GST_DEBUG_OBJECT(tcpsrc, "Start reading");
+
+  while (bytes_read < 2) {
+    bytes_read += recv(tcpsrc->socket, rtp_packet_length_field_buffer+bytes_read, RTP_LENGTH_FIELD_SIZE-bytes_read, 0);
+    if (bytes_read == -1) {
+      GST_ELEMENT_ERROR (tcpsrc, RESOURCE, OPEN_READ, (NULL),
+          ("Error when reading rtp length field: %d", errno));
+      return FALSE;
+    }
+
+    // Connection closed by server, send EOS to pipeline
+    if (bytes_read == 0)
+    {
+      return GST_FLOW_EOS;
+    }
   }
 
-  // If there is no data yet availiable, then we still call recv as it will block
-  // until there is some data to write to a buffer. We use 10000 bytes as the default value
-  if (data_availiable == 0) 
-  {
-    data_availiable = TCP_DEFAULT_READ_SIZE;
-  }
-  *outbuf = gst_buffer_new_and_alloc(data_availiable);
+  guint8 octet1 = rtp_packet_length_field_buffer[0];
+  guint8 octet2 = rtp_packet_length_field_buffer[1];
+  guint16 next_packet_length = (octet1 << 8) + octet2;
 
-  GST_DEBUG_OBJECT(tcpsrc, "Start reading, data_available = %d", data_availiable);
-
+  bytes_read = 0;
   gst_buffer_map (*outbuf, &map, GST_MAP_READWRITE);
-  bytes_read = recv(tcpsrc->socket, map.data, data_availiable, 0);
-  if (bytes_read == -1) {
-    GST_ELEMENT_ERROR (tcpsrc, RESOURCE, OPEN_READ, (NULL),
-        ("Error when reading: %d", errno));
-    return FALSE;
+  while (bytes_read < next_packet_length) {
+    bytes_read += recv(tcpsrc->socket, map.data+bytes_read, next_packet_length-bytes_read, 0);
+    if (bytes_read == -1) {
+      GST_ELEMENT_ERROR (tcpsrc, RESOURCE, OPEN_READ, (NULL),
+          ("Error when reading rtp packet: %d", errno));
+      return FALSE;
+    }
+
+    // Connection closed by server, send EOS to pipeline
+    if (bytes_read == 0)
+    {
+      return GST_FLOW_EOS;
+    }
   }
 
   gst_buffer_unmap(*outbuf, &map);
-  gst_buffer_resize(*outbuf, 0, bytes_read);
+  gst_buffer_resize(*outbuf, 0, next_packet_length);
 
   // Connection closed by server, send EOS to pipeline
   if (bytes_read == 0)
@@ -457,7 +474,7 @@ gst_tcpsrc_create (GstPushSrc * src, GstBuffer ** outbuf)
   }
 
 
-  GST_DEBUG_OBJECT (tcpsrc, "Read %lu bytes from socket. Pushing buffer of size %lu", bytes_read, bytes_read);
+  GST_DEBUG_OBJECT (tcpsrc, "Read %lu bytes from socket. Pushing rtp packet of size %lu", bytes_read+2, next_packet_length);
 
   return GST_FLOW_OK;
 }
