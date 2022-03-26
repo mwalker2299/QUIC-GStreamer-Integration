@@ -94,7 +94,7 @@ def does_new_data_fit_in_existing_quic_chunk(stream, new_data):
   stream_len = len(stream)
   for i, stream_chunk in enumerate(stream):
     if new_data[0] == stream_chunk[0] + stream_chunk[1]:
-      # Fits, update values
+      # Fits on end of existing chunk, update values
       stream_chunk[1] += new_data[1]
       stream_chunk[2] += new_data[2]
       if (i+1 < stream_len):
@@ -105,6 +105,13 @@ def does_new_data_fit_in_existing_quic_chunk(stream, new_data):
           stream_chunk[1] += next_stream_chunk[1]
           stream_chunk[2] += next_stream_chunk[2]
       return True
+    elif stream_chunk[0] == new_data[0] + new_data[1]:
+      #Does not fit at the end of any chunks, but does fit at beginning of existing chunk
+      new_data[1] += stream_chunk[1]
+      new_data[2] += stream_chunk[2]
+      stream[i] = new_data
+      return True
+
       
   else:
     return False
@@ -392,8 +399,9 @@ def extract_rtp_data_from_quic_stream_available(filename):
     # Each dictionary entry has a list of tuples representing chunks of the stream
     # each chunk contains the largest offset seen for that chunk, the length of data
     # received for that chunk and the payload data itself
-    streams      = {}
-    stream_ready = -1
+    streams          = {}
+    offsets_received = {}
+    stream_ready     = -1
 
 
     for line in rtp_file:
@@ -431,14 +439,21 @@ def extract_rtp_data_from_quic_stream_available(filename):
         payload        = line_contents[8]
         payload_length = len(payload)/2
 
+        # Ignore retransmissions
+        if stream_id in streams:
+          if offset in offsets_received[stream_id]:
+            continue
+
         # First time seeing this stream, create entry
         if stream_id not in streams:
-          streams[stream_id] = [[0,0,""]]
+          streams[stream_id]          = [[0,0,""]]
+          offsets_received[stream_id] = []
 
 
 
         stream = streams[stream_id]
         first_stream_chunk = stream[0]
+        offsets_received[stream_id].append(offset)
 
         # if offset of new packet is equal to the amount of data we have 
         # already received on the first stream chunk, then there is no missing data
