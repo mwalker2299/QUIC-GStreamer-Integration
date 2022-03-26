@@ -26,7 +26,7 @@ def convert_tcp_capture(directory):
   # issue but there is no fix as of yet. As a result, we must extract the rtp sequence numbers
   # directly from the tcp stream, similar as we did for quic. The server side doesnt experience
   # any loss or packet reordering so tshark can do the work for us in that case.
-  packet_depature     = extract_rtp_data_from_tcp_capture(server_rtp_seq_num_file)
+  packet_depature     = extract_rtp_data_from_tcp_stream_available(server_rtp_seq_num_file)
   packet_arrival      = extract_rtp_data_from_tcp_stream_arrival(client_rtp_capture_file)
   packet_available    = extract_rtp_data_from_tcp_stream_available(client_rtp_capture_file)
   time_diff_arrival   = calculate_time_diffs(packet_depature, packet_arrival)
@@ -206,12 +206,14 @@ def extract_rtp_data_from_tcp_stream_available(filename):
     for line in rtp_file:
       line_contents = str.split(line)
       if len(line_contents) >= 7:
+        if len(line_contents) == 8:
+          line_contents.pop(6)
         datetime_format = datetime.strptime(line_contents[3][:-3], '%H:%M:%S.%f')
         time_in_milliseconds = datetime_format.timestamp() * 1000
 
         seq_num = int(line_contents[5])
 
-        if seq_num < first_stream_chunk[0]:
+        if seq_num <= first_stream_chunk[0]:
           #Assume retransmission
           continue
 
