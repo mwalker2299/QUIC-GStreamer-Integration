@@ -102,5 +102,8 @@ compile_commands.json
 build.ninja
 src/gst-quic/build/
 
+# Python
+__pycache__
+
 # vscode 
 .vscode/
