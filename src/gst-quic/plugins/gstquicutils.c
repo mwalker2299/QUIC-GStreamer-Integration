@@ -32,6 +32,7 @@ gboolean gst_quic_set_addr(gchar* host, guint16 port, server_addr_u *server_addr
   }
 } 
 
+/* adapted from the lsquic tutorial: https://github.com/dtikhonov/lsquic-tutorial/blob/master/tut.c/ */
 void gst_quic_set_ecn_ancillary_data (struct msghdr *msg, const struct lsquic_out_spec *spec,
    unsigned char *ancillary_buf, size_t ancillary_buf_size)
 {
@@ -69,7 +70,8 @@ void gst_quic_set_ecn_ancillary_data (struct msghdr *msg, const struct lsquic_ou
     }
 }
 
-/* Method used by lsquic engine to send quic packets via udp datagrams. Returns number of packets sent */
+/* Method used by lsquic engine to send quic packets via udp datagrams. Returns number of packets sent 
+   adapted from the lsquic tutorial: https://github.com/dtikhonov/lsquic-tutorial/blob/master/tut.c/ */
 gint gst_quic_send_packets (void *packets_out_ctx, const struct lsquic_out_spec *packet_specs,
                                                                 unsigned packet_count)
 {
@@ -89,7 +91,7 @@ gint gst_quic_send_packets (void *packets_out_ctx, const struct lsquic_out_spec 
         return 0;
 
     current_packet = 0;
-    msg.msg_flags = 0; //TODO: Does this need to be set to zero?
+    msg.msg_flags = 0;
 
     for (current_packet = 0; current_packet < packet_count; ++current_packet) 
     {
@@ -130,6 +132,7 @@ gint gst_quic_send_packets (void *packets_out_ctx, const struct lsquic_out_spec 
     }
 }
 
+/* adapted from the lsquic tutorial: https://github.com/dtikhonov/lsquic-tutorial/blob/master/tut.c/ */
 void gst_quic_read_ancillary_data (struct msghdr *msg, struct sockaddr_storage *storage, int *ecn)
 {
     const struct in6_pktinfo *in6_pkt;
@@ -172,7 +175,8 @@ void gst_quic_read_ancillary_data (struct msghdr *msg, struct sockaddr_storage *
 }
 
 /* Method which reads UDP datagrams from the socket associated with the QUIC connections. These packets are then passed 
-   to the quic engine for processing. */
+   to the quic engine for processing. 
+   adapted from the lsquic tutorial: https://github.com/dtikhonov/lsquic-tutorial/blob/master/tut.c/ */
 void gst_quic_read_packets (GstElement * quic_element, gint socket, lsquic_engine_t *engine, struct sockaddr_storage local_address)
 {
     gssize nread;

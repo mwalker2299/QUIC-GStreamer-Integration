@@ -25,7 +25,7 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -v filesrc location=\"/home/matt/Documents/zoom_recording.mp4\" ! qtdemux name=demux  demux.video_0  ! rtph264pay seqnum-offset=0 ! quicsinkss host={addr} port=5000 keylog={keylog}"
+ * gst-launch-1.0 -v filesrc location=\"test.mp4\" ! qtdemux name=demux  demux.video_0  ! rtph264pay seqnum-offset=0 mtu=1398 ! rtpstreampay ! quicsinkss host=127.0.0.1 port=5000 keylog=SSL.keys sync=false"
  * ]|
  * Send data over the network using the QUIC protocol
  * </refsect2>
@@ -40,8 +40,6 @@
 #include "gstquicsinkss.h"
 #include "gstquicutils.h"
 
-//FIXME: Theses are test defaults and should be updated to a more appropriate value before code is adapted for general use
-//FIXME: Move defines to gstquicutils.h?
 #define QUIC_SERVER 1
 #define QUIC_DEFAULT_PORT 12345
 #define QUIC_DEFAULT_HOST "127.0.0.1"
@@ -73,26 +71,11 @@ static void gst_quicsinkss_dispose (GObject * object);
 static void gst_quicsinkss_finalize (GObject * object);
 
 static GstCaps *gst_quicsinkss_get_caps (GstBaseSink * sink, GstCaps * filter);
-// static gboolean gst_quicsinkss_set_caps (GstBaseSink * sink, GstCaps * caps);
-// static GstCaps *gst_quicsinkss_fixate (GstBaseSink * sink, GstCaps * caps);
-// static gboolean gst_quicsinkss_activate_pull (GstBaseSink * sink,
-//     gboolean active);
-// static void gst_quicsinkss_get_times (GstBaseSink * sink, GstBuffer * buffer,
-//     GstClockTime * start, GstClockTime * end);
-// static gboolean gst_quicsinkss_propose_allocation (GstBaseSink * sink,
-//     GstQuery * query);
 static gboolean gst_quicsinkss_start (GstBaseSink * sink);
 static gboolean gst_quicsinkss_stop (GstBaseSink * sink);
 static gboolean gst_quicsinkss_unlock (GstBaseSink * sink);
 static gboolean gst_quicsinkss_unlock_stop (GstBaseSink * sink);
-// static gboolean gst_quicsinkss_query (GstBaseSink * sink, GstQuery * query);
 static gboolean gst_quicsinkss_event (GstBaseSink * sink, GstEvent * event);
-// static GstFlowReturn gst_quicsinkss_wait_event (GstBaseSink * sink,
-//     GstEvent * event);
-// static GstFlowReturn gst_quicsinkss_prepare (GstBaseSink * sink,
-//     GstBuffer * buffer);
-// static GstFlowReturn gst_quicsinkss_prepare_list (GstBaseSink * sink,
-//     GstBufferList * buffer_list);
 static GstFlowReturn gst_quicsinkss_preroll (GstBaseSink * sink,
     GstBuffer * buffer);
 static GstFlowReturn gst_quicsinkss_render (GstBaseSink * sink,
@@ -196,29 +179,17 @@ gst_quicsinkss_class_init (GstQuicsinkssClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   base_sink_class->get_caps = GST_DEBUG_FUNCPTR (gst_quicsinkss_get_caps);
-  // base_sink_class->set_caps = GST_DEBUG_FUNCPTR (gst_quicsinkss_set_caps);
-  // base_sink_class->fixate = GST_DEBUG_FUNCPTR (gst_quicsinkss_fixate);
-  // base_sink_class->activate_pull =
-  //     GST_DEBUG_FUNCPTR (gst_quicsinkss_activate_pull);
-  // base_sink_class->get_times = GST_DEBUG_FUNCPTR (gst_quicsinkss_get_times);
-  // base_sink_class->propose_allocation =
-  //     GST_DEBUG_FUNCPTR (gst_quicsinkss_propose_allocation);
   base_sink_class->start = GST_DEBUG_FUNCPTR (gst_quicsinkss_start);
   base_sink_class->stop = GST_DEBUG_FUNCPTR (gst_quicsinkss_stop);
   base_sink_class->unlock = GST_DEBUG_FUNCPTR (gst_quicsinkss_unlock);
   base_sink_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_quicsinkss_unlock_stop);
-  // base_sink_class->query = GST_DEBUG_FUNCPTR (gst_quicsinkss_query);
   base_sink_class->event = GST_DEBUG_FUNCPTR (gst_quicsinkss_event);
-  // base_sink_class->wait_event = GST_DEBUG_FUNCPTR (gst_quicsinkss_wait_event);
-  // base_sink_class->prepare = GST_DEBUG_FUNCPTR (gst_quicsinkss_prepare);
-  // base_sink_class->prepare_list = GST_DEBUG_FUNCPTR (gst_quicsinkss_prepare_list);
   base_sink_class->preroll = GST_DEBUG_FUNCPTR (gst_quicsinkss_preroll);
   base_sink_class->render = GST_DEBUG_FUNCPTR (gst_quicsinkss_render);
   base_sink_class->render_list = GST_DEBUG_FUNCPTR (gst_quicsinkss_render_list);
 
 }
 
-//FIXME: pass this as part of the peer_ctx:
 static SSL_CTX *static_ssl_ctx;
 static gchar *keylog_file;
 
@@ -359,30 +330,15 @@ static lsquic_stream_ctx_t *gst_quicsinkss_on_new_stream (void *stream_if_ctx, s
     return (void *) quicsinkss;
 }
 
-
+//These functions are not used, but must be defined for lsquic to work
 static gsize gst_quicsinkss_readf (void *ctx, const unsigned char *data, size_t len, int fin)
 {
     struct lsquic_stream *stream = (struct lsquic_stream *) ctx;
     GstQuicsinkss *quicsinkss = GST_QUICSINKSS ((void *) lsquic_stream_get_ctx(stream));
 
-    // if (len) 
-    // {
-    //     quicsinkss->stream_ctx.offset = len;
-    //     memcpy(quicsinkss->stream_ctx.buffer, data, len);
-    //     GST_DEBUG_OBJECT(quicsinkss, "MW: Read %lu bytes from stream", len);
-    //     printf("Read %s", quicsinkss->stream_ctx.buffer);
-    //     fflush(stdout);
-    // }
-    // if (fin)
-    // {
-    //     GST_DEBUG_OBJECT(quicsinkss, "MW: Read end of stream, for the purpose of this test we want to write the reverse back");
-    //     lsquic_stream_shutdown(stream, 0);
-    //     lsquic_stream_wantwrite(stream, 1);
-    // }
     return len;
 }
 
-//FIXME: This function is currently set up for test purpose. It will need to be modified.
 static void gst_quicsinkss_on_read (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx)
 {
     GstQuicsinkss *quicsinkss = GST_QUICSINKSS (stream_ctx);
@@ -431,8 +387,6 @@ static void gst_quicsinkss_on_write (struct lsquic_stream *stream, lsquic_stream
     struct lsquic_reader buffer_reader = {gst_quicsinkss_read_buffer, gst_quicsinkss_get_remaining_buffer_size, quicsinkss, };
     const gsize buffer_size = quicsinkss->stream_ctx.buffer_size;
     gssize bytes_written;
-
-    // GST_DEBUG_OBJECT(quicsinkss, "MW: writing to stream, total buffer size = (%lu bytes)", buffer_size);
 
     bytes_written = lsquic_stream_writef(stream, &buffer_reader);
     if (bytes_written > 0)
@@ -638,51 +592,7 @@ gst_quicsinkss_get_caps (GstBaseSink * sink, GstCaps * filter)
   return caps;
 }
 
-/* fixate sink caps during pull-mode negotiation */
-// static GstCaps *
-// gst_quicsinkss_fixate (GstBaseSink * sink, GstCaps * caps)
-// {
-//   GstQuicsinkss *quicsinkss = GST_QUICSINKSS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkss, "fixate");
-
-//   return NULL;
-// }
-
-// /* start or stop a pulling thread */
-// static gboolean
-// gst_quicsinkss_activate_pull (GstBaseSink * sink, gboolean active)
-// {
-//   GstQuicsinkss *quicsinkss = GST_QUICSINKSS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkss, "activate_pull");
-
-//   return TRUE;
-// }
-
-// /* get the start and end times for syncing on this buffer */
-// static void
-// gst_quicsinkss_get_times (GstBaseSink * sink, GstBuffer * buffer,
-//     GstClockTime * start, GstClockTime * end)
-// {
-//   GstQuicsinkss *quicsinkss = GST_QUICSINKSS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkss, "get_times");
-
-// }
-
-// /* propose allocation parameters for upstream */
-// static gboolean
-// gst_quicsinkss_propose_allocation (GstBaseSink * sink, GstQuery * query)
-// {
-//   GstQuicsinkss *quicsinkss = GST_QUICSINKSS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkss, "propose_allocation");
-
-//   return TRUE;
-// }
-
-/* start and stop processing, ideal for opening/closing the resource */
+/* Set up lsquic and establish a connection to the client */
 static gboolean
 gst_quicsinkss_start (GstBaseSink * sink)
 {
@@ -801,7 +711,6 @@ gst_quicsinkss_start (GstBaseSink * sink)
     return FALSE;
   }
 
-  //TODO: Refactor into a gstquic utils function
   //set ip flags
   //Set flags to allow the original destination address to be retrieved.
   activate = 1;
@@ -928,17 +837,6 @@ gst_quicsinkss_unlock_stop (GstBaseSink * sink)
   return TRUE;
 }
 
-// /* notify subclass of query */
-// static gboolean
-// gst_quicsinkss_query (GstBaseSink * sink, GstQuery * query)
-// {
-//   GstQuicsinkss *quicsinkss = GST_QUICSINKSS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkss, "query");
-
-//   return TRUE;
-// }
-
 /* notify subclass of event */
 static gboolean
 gst_quicsinkss_event (GstBaseSink * sink, GstEvent * event)
@@ -961,38 +859,6 @@ gst_quicsinkss_event (GstBaseSink * sink, GstEvent * event)
   return ret;
 }
 
-// /* wait for eos or gap, subclasses should chain up to parent first */
-// static GstFlowReturn
-// gst_quicsinkss_wait_event (GstBaseSink * sink, GstEvent * event)
-// {
-//   GstQuicsinkss *quicsinkss = GST_QUICSINKSS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkss, "wait_event");
-
-//   return GST_FLOW_OK;
-// }
-
-// /* notify subclass of buffer or list before doing sync */
-// static GstFlowReturn
-// gst_quicsinkss_prepare (GstBaseSink * sink, GstBuffer * buffer)
-// {
-//   GstQuicsinkss *quicsinkss = GST_QUICSINKSS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkss, "prepare");
-
-//   return GST_FLOW_OK;
-// }
-
-// static GstFlowReturn
-// gst_quicsinkss_prepare_list (GstBaseSink * sink, GstBufferList * buffer_list)
-// {
-//   GstQuicsinkss *quicsinkss = GST_QUICSINKSS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkss, "prepare_list");
-
-//   return GST_FLOW_OK;
-// }
-
 /* notify subclass of preroll buffer or real buffer */
 static GstFlowReturn
 gst_quicsinkss_preroll (GstBaseSink * sink, GstBuffer * buffer)
@@ -1004,6 +870,8 @@ gst_quicsinkss_preroll (GstBaseSink * sink, GstBuffer * buffer)
   return GST_FLOW_OK;
 }
 
+/* Write data from upstream buffers to a stream.
+   A single stream is used throughout the connection */
 static GstFlowReturn
 gst_quicsinkss_render (GstBaseSink * sink, GstBuffer * buffer)
 {

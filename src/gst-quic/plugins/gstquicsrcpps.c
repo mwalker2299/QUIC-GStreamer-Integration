@@ -20,13 +20,13 @@
  * SECTION:element-gstquicsrcpps
  *
  * The quicsrcpps element receives data over the network using the QUIC protocol.
- * It is currently set up for testing purposes only and so only works with rtp packets.
- * Each rtp packet comes in its own stream.
+ * This element is setup for experimental purposes and the data is assumed to be in the 
+ * form of RTP packets. This element assumes that each stream contains a single RTP packet.
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 quicsrcpps host={addr} port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96, seqnum-base=(int)0\" ! rtpjitterbuffer latency={buffer_delay} ! rtph264depay ! h264parse ! queue ! decodebin ! videoconvert !  fakesink -v
+ * gst-launch-1.0 quicsrcpps host=127.0.0.1 port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96, seqnum-base=(int)0\" ! rtpjitterbuffer latency={buffer_delay} ! rtph264depay ! h264parse ! queue ! decodebin ! videoconvert !  fakesink -v
  * ]|
  * Receive data over the network using quicsrcpps
  * </refsect2>
@@ -231,7 +231,6 @@ gst_quicsrcpps_set_property (GObject * object, guint property_id,
       g_free (quicsrcpps->log_file);
       quicsrcpps->log_file = g_strdup (g_value_get_string (value));
       break;
-    //FIXME: Should we protect against this being null?
     case PROP_PORT:
       quicsrcpps->port = g_value_get_int (value);
       break;
@@ -447,7 +446,7 @@ gst_quicsrcpps_on_read (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsqui
     }
 }
 
-//FIXME: This function is set up for test purposes and should probably be disbaled as we have no need to write.
+//This function is not used, but must be defined for lsquic to function
 static void
 gst_quicsrcpps_on_write (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsquic_stream_ctx)
 {
@@ -672,29 +671,6 @@ gst_quicsrcpps_stop (GstBaseSrc * src)
   return TRUE;
 }
 
-// /* given a buffer, return start and stop time when it should be pushed
-//  * out. The base class will sync on the clock using these times. */
-// static void
-// gst_quicsrcpps_get_times (GstBaseSrc * src, GstBuffer * buffer,
-//     GstClockTime * start, GstClockTime * end)
-// {
-//   GstQuicsrcpps *quicsrcpps = GST_QUICSRCPPS (src);
-
-//   GST_DEBUG_OBJECT (quicsrcpps, "get_times");
-
-// }
-
-// /* get the total size of the resource in bytes */
-// static gboolean
-// gst_quicsrcpps_get_size (GstBaseSrc * src, guint64 * size)
-// {
-//   GstQuicsrcpps *quicsrcpps = GST_QUICSRCPPS (src);
-
-//   GST_DEBUG_OBJECT (quicsrcpps, "get_size");
-
-//   return TRUE;
-// }
-
 /* unlock any pending access to the resource. subclasses should unlock
  * any function ASAP. */
 static gboolean
@@ -723,8 +699,6 @@ static gboolean
 gst_quicsrcpps_event (GstBaseSrc * src, GstEvent * event)
 {
   GstQuicsrcpps *quicsrcpps = GST_QUICSRCPPS (src);
-
-  // GST_DEBUG_OBJECT (quicsrcpps, "event");
 
   return TRUE;
 }

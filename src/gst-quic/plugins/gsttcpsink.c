@@ -19,14 +19,13 @@
 /**
  * SECTION:element-gsttcpsink
  *
- * The tcpsink element does FIXME stuff.
+ * The tcpsink element creates a connection with a tcpsrc element and sends data from upstream over the network using TCP.
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -v fakesrc ! tcpsink ! FIXME ! fakesink
+ * gst-launch-1.0 -v filesrc location=\"test.mp4\" ! qtdemux name=demux  demux.video_0  ! rtph264pay seqnum-offset=0 mtu=1398 ! rtpstreampay ! tcpsrc host=127.0.0.1 port=5000 sync=false"
  * ]|
- * FIXME Describe what the pipeline does.
  * </refsect2>
  */
 
@@ -55,26 +54,10 @@ static void gst_tcpsink_dispose (GObject * object);
 static void gst_tcpsink_finalize (GObject * object);
 
 static GstCaps *gst_tcpsink_get_caps (GstBaseSink * sink, GstCaps * filter);
-// static gboolean gst_tcpsink_set_caps (GstBaseSink * sink, GstCaps * caps);
-// static GstCaps *gst_tcpsink_fixate (GstBaseSink * sink, GstCaps * caps);
-// static gboolean gst_tcpsink_activate_pull (GstBaseSink * sink,
-//     gboolean active);
-// static void gst_tcpsink_get_times (GstBaseSink * sink, GstBuffer * buffer,
-//     GstClockTime * start, GstClockTime * end);
-// static gboolean gst_tcpsink_propose_allocation (GstBaseSink * sink,
-//     GstQuery * query);
 static gboolean gst_tcpsink_start (GstBaseSink * sink);
 static gboolean gst_tcpsink_stop (GstBaseSink * sink);
 static gboolean gst_tcpsink_unlock (GstBaseSink * sink);
 static gboolean gst_tcpsink_unlock_stop (GstBaseSink * sink);
-// static gboolean gst_tcpsink_query (GstBaseSink * sink, GstQuery * query);
-// static gboolean gst_tcpsink_event (GstBaseSink * sink, GstEvent * event);
-// static GstFlowReturn gst_tcpsink_wait_event (GstBaseSink * sink,
-//     GstEvent * event);
-// static GstFlowReturn gst_tcpsink_prepare (GstBaseSink * sink,
-//     GstBuffer * buffer);
-// static GstFlowReturn gst_tcpsink_prepare_list (GstBaseSink * sink,
-//     GstBufferList * buffer_list);
 static GstFlowReturn gst_tcpsink_preroll (GstBaseSink * sink,
     GstBuffer * buffer);
 static GstFlowReturn gst_tcpsink_render (GstBaseSink * sink,
@@ -134,22 +117,10 @@ gst_tcpsink_class_init (GstTcpsinkClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   base_sink_class->get_caps = GST_DEBUG_FUNCPTR (gst_tcpsink_get_caps);
-  // base_sink_class->set_caps = GST_DEBUG_FUNCPTR (gst_tcpsink_set_caps);
-  // base_sink_class->fixate = GST_DEBUG_FUNCPTR (gst_tcpsink_fixate);
-  // base_sink_class->activate_pull =
-  //     GST_DEBUG_FUNCPTR (gst_tcpsink_activate_pull);
-  // base_sink_class->get_times = GST_DEBUG_FUNCPTR (gst_tcpsink_get_times);
-  // base_sink_class->propose_allocation =
-  //     GST_DEBUG_FUNCPTR (gst_tcpsink_propose_allocation);
   base_sink_class->start = GST_DEBUG_FUNCPTR (gst_tcpsink_start);
   base_sink_class->stop = GST_DEBUG_FUNCPTR (gst_tcpsink_stop);
   base_sink_class->unlock = GST_DEBUG_FUNCPTR (gst_tcpsink_unlock);
   base_sink_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_tcpsink_unlock_stop);
-  // base_sink_class->query = GST_DEBUG_FUNCPTR (gst_tcpsink_query);
-  // base_sink_class->event = GST_DEBUG_FUNCPTR (gst_tcpsink_event);
-  // base_sink_class->wait_event = GST_DEBUG_FUNCPTR (gst_tcpsink_wait_event);
-  // base_sink_class->prepare = GST_DEBUG_FUNCPTR (gst_tcpsink_prepare);
-  // base_sink_class->prepare_list = GST_DEBUG_FUNCPTR (gst_tcpsink_prepare_list);
   base_sink_class->preroll = GST_DEBUG_FUNCPTR (gst_tcpsink_preroll);
   base_sink_class->render = GST_DEBUG_FUNCPTR (gst_tcpsink_render);
   base_sink_class->render_list = GST_DEBUG_FUNCPTR (gst_tcpsink_render_list);
@@ -257,51 +228,7 @@ gst_tcpsink_get_caps (GstBaseSink * sink, GstCaps * filter)
   return caps;
 }
 
-/* fixate sink caps during pull-mode negotiation */
-// static GstCaps *
-// gst_tcpsink_fixate (GstBaseSink * sink, GstCaps * caps)
-// {
-//   GstTcpsink *tcpsink = GST_TCPSINK (sink);
-
-//   GST_DEBUG_OBJECT (tcpsink, "fixate");
-
-//   return NULL;
-// }
-
-// /* start or stop a pulling thread */
-// static gboolean
-// gst_tcpsink_activate_pull (GstBaseSink * sink, gboolean active)
-// {
-//   GstTcpsink *tcpsink = GST_TCPSINK (sink);
-
-//   GST_DEBUG_OBJECT (tcpsink, "activate_pull");
-
-//   return TRUE;
-// }
-
-// /* get the start and end times for syncing on this buffer */
-// static void
-// gst_tcpsink_get_times (GstBaseSink * sink, GstBuffer * buffer,
-//     GstClockTime * start, GstClockTime * end)
-// {
-//   GstTcpsink *tcpsink = GST_TCPSINK (sink);
-
-//   GST_DEBUG_OBJECT (tcpsink, "get_times");
-
-// }
-
-// /* propose allocation parameters for upstream */
-// static gboolean
-// gst_tcpsink_propose_allocation (GstBaseSink * sink, GstQuery * query)
-// {
-//   GstTcpsink *tcpsink = GST_TCPSINK (sink);
-
-//   GST_DEBUG_OBJECT (tcpsink, "propose_allocation");
-
-//   return TRUE;
-// }
-
-/* start and stop processing, ideal for opening/closing the resource */
+/* Establish a connection to the client */
 static gboolean
 gst_tcpsink_start (GstBaseSink * sink)
 {
@@ -426,6 +353,7 @@ gst_tcpsink_preroll (GstBaseSink * sink, GstBuffer * buffer)
   return GST_FLOW_OK;
 }
 
+/* Write data from upstream buffers to the connection socket */
 static GstFlowReturn
 gst_tcpsink_render (GstBaseSink * sink, GstBuffer * buffer)
 {

@@ -20,13 +20,15 @@
  * SECTION:element-gstquicsrcgop
  *
  * The quicsrcgop element receives data over the network using the QUIC protocol.
- * It is currently set up for testing purposes only and so only works with rtp packets.
- * Each rtp packet comes in its own stream.
+ * This element is setup for experimental purposes and the data is assumed to be in the 
+ * form of RTP packets which have a length appended to the front as per RFC 4571. Reading 
+ * will continue until a full packet is available and the length will be removed from the 
+ * front before passing downstream.
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 quicsrcgop host={addr} port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96, seqnum-base=(int)0\" ! rtpjitterbuffer latency={buffer_delay} ! rtph264depay ! h264parse ! queue ! decodebin ! videoconvert !  fakesink -v
+ * gst-launch-1.0 quicsrcgop host=127.0.0.1 port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96, seqnum-base=(int)0\" ! rtpjitterbuffer latency={buffer_delay} ! rtph264depay ! h264parse ! queue ! decodebin ! videoconvert !  fakesink -v
  * ]|
  * Receive data over the network using quicsrcgop
  * </refsect2>
@@ -231,7 +233,6 @@ gst_quicsrcgop_set_property (GObject * object, guint property_id,
       g_free (quicsrcgop->log_file);
       quicsrcgop->log_file = g_strdup (g_value_get_string (value));
       break;
-    //FIXME: Should we protect against this being null?
     case PROP_PORT:
       quicsrcgop->port = g_value_get_int (value);
       break;
@@ -459,7 +460,7 @@ gst_quicsrcgop_on_read (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsqui
     }
 }
 
-//FIXME: This function is set up for test purposes and should probably be disbaled as we have no need to write.
+//This function is not used, but must be defined for lsquic to work
 static void
 gst_quicsrcgop_on_write (struct lsquic_stream *stream, lsquic_stream_ctx_t *lsquic_stream_ctx)
 {
@@ -697,29 +698,6 @@ gst_quicsrcgop_stop (GstBaseSrc * src)
   return TRUE;
 }
 
-// /* given a buffer, return start and stop time when it should be pushed
-//  * out. The base class will sync on the clock using these times. */
-// static void
-// gst_quicsrcgop_get_times (GstBaseSrc * src, GstBuffer * buffer,
-//     GstClockTime * start, GstClockTime * end)
-// {
-//   GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (src);
-
-//   GST_DEBUG_OBJECT (quicsrcgop, "get_times");
-
-// }
-
-// /* get the total size of the resource in bytes */
-// static gboolean
-// gst_quicsrcgop_get_size (GstBaseSrc * src, guint64 * size)
-// {
-//   GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (src);
-
-//   GST_DEBUG_OBJECT (quicsrcgop, "get_size");
-
-//   return TRUE;
-// }
-
 /* unlock any pending access to the resource. subclasses should unlock
  * any function ASAP. */
 static gboolean
@@ -749,8 +727,6 @@ gst_quicsrcgop_event (GstBaseSrc * src, GstEvent * event)
 {
   GstQuicsrcgop *quicsrcgop = GST_QUICSRCGOP (src);
 
-  // GST_DEBUG_OBJECT (quicsrcgop, "event");
-
   return TRUE;
 }
 
@@ -773,8 +749,8 @@ gst_quicsrcgop_create (GstPushSrc * src, GstBuffer ** outbuf)
   }
 
   // Iterate through all of our stream conetexts to find complete streams.
-  // The first completed stream found is converted to a buffer and pushed downstream
-  // If no completed streams are available, we will read packets until one is
+  // The first stream containing a complete rtp packet found is converted to a buffer and pushed downstream
+  // If no streams with complete rtp packets are available, we will read packets until one is
   stream_context_queue = quicsrcgop->stream_context_queue;
   while (stream_context_queue != NULL) {
     current_stream =  ((struct stream_ctx*) (stream_context_queue->data));

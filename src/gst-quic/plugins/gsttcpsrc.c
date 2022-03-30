@@ -19,12 +19,15 @@
 /**
  * SECTION:element-gsttcpsrc
  *
- * The tcpsrc element does FIXME stuff.
+ * The tcpsrc element does reads data from a TCP connection and pushes it downstream.
+ * The data is assumed to be in the form of RTP packets which have a length appended
+ * to the front as per RFC 4571. Reading will continue until a full packet is available
+ * and the length will be removed from the front before passing downstream.
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -v fakesrc ! tcpsrc ! FIXME ! fakesink
+ * gst-launch-1.0 tcpsrc host=127.0.0.1 port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96, seqnum-base=(int)0\" ! rtpjitterbuffer latency={buffer_delay} ! rtph264depay ! h264parse ! queue ! decodebin ! videoconvert !  fakesink -v
  * ]|
  * FIXME Describe what the pipeline does.
  * </refsect2>
@@ -349,29 +352,6 @@ gst_tcpsrc_stop (GstBaseSrc * src)
 
   return TRUE;
 }
-
-// /* given a buffer, return start and stop time when it should be pushed
-//  * out. The base class will sync on the clock using these times. */
-// static void
-// gst_tcpsrc_get_times (GstBaseSrc * src, GstBuffer * buffer,
-//     GstClockTime * start, GstClockTime * end)
-// {
-//   GstTcpsrc *tcpsrc = GST_TCPSRC (src);
-
-//   GST_DEBUG_OBJECT (tcpsrc, "get_times");
-
-// }
-
-// /* get the total size of the resource in bytes */
-// static gboolean
-// gst_tcpsrc_get_size (GstBaseSrc * src, guint64 * size)
-// {
-//   GstTcpsrc *tcpsrc = GST_TCPSRC (src);
-
-//   GST_DEBUG_OBJECT (tcpsrc, "get_size");
-
-//   return TRUE;
-// }
 
 /* unlock any pending access to the resource. subclasses should unlock
  * any function ASAP. */

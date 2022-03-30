@@ -20,13 +20,13 @@
  * SECTION:element-gstquicsinkpps
  *
  * The quicsinkpps element acts as a QUIC server. This element is solely for 
- * experimental purposes and expects to receive rtp packets. 
+ * experimental purposes. 
  * The element utilises one stream per rtp packet sent.
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -v filesrc location=\"/home/matt/Documents/zoom_recording.mp4\" ! qtdemux name=demux  demux.video_0  ! rtph264pay seqnum-offset=0 ! quicsinkpps host={addr} port=5000 keylog={keylog}"
+   * gst-launch-1.0 -v filesrc location=\"test.mp4\" ! qtdemux name=demux  demux.video_0  ! rtph264pay seqnum-offset=0 mtu=1400 ! quicsinkpps host=127.0.0.1 port=5000 keylog=SSL.keys sync=false"
  * ]|
  * Send rtp packets over the network.
  * </refsect2>
@@ -41,8 +41,6 @@
 #include "gstquicsinkpps.h"
 #include "gstquicutils.h"
 
-//FIXME: Theses are test defaults and should be updated to a more appropriate value before code is adapted for general use
-//FIXME: Move defines to gstquicutils.h?
 #define QUIC_SERVER 1
 #define QUIC_DEFAULT_PORT 12345
 #define QUIC_DEFAULT_HOST "127.0.0.1"
@@ -74,26 +72,10 @@ static void gst_quicsinkpps_dispose (GObject * object);
 static void gst_quicsinkpps_finalize (GObject * object);
 
 static GstCaps *gst_quicsinkpps_get_caps (GstBaseSink * sink, GstCaps * filter);
-// static gboolean gst_quicsinkpps_set_caps (GstBaseSink * sink, GstCaps * caps);
-// static GstCaps *gst_quicsinkpps_fixate (GstBaseSink * sink, GstCaps * caps);
-// static gboolean gst_quicsinkpps_activate_pull (GstBaseSink * sink,
-//     gboolean active);
-// static void gst_quicsinkpps_get_times (GstBaseSink * sink, GstBuffer * buffer,
-//     GstClockTime * start, GstClockTime * end);
-// static gboolean gst_quicsinkpps_propose_allocation (GstBaseSink * sink,
-//     GstQuery * query);
 static gboolean gst_quicsinkpps_start (GstBaseSink * sink);
 static gboolean gst_quicsinkpps_stop (GstBaseSink * sink);
 static gboolean gst_quicsinkpps_unlock (GstBaseSink * sink);
 static gboolean gst_quicsinkpps_unlock_stop (GstBaseSink * sink);
-// static gboolean gst_quicsinkpps_query (GstBaseSink * sink, GstQuery * query);
-// static gboolean gst_quicsinkpps_event (GstBaseSink * sink, GstEvent * event);
-// static GstFlowReturn gst_quicsinkpps_wait_event (GstBaseSink * sink,
-//     GstEvent * event);
-// static GstFlowReturn gst_quicsinkpps_prepare (GstBaseSink * sink,
-//     GstBuffer * buffer);
-// static GstFlowReturn gst_quicsinkpps_prepare_list (GstBaseSink * sink,
-//     GstBufferList * buffer_list);
 static GstFlowReturn gst_quicsinkpps_preroll (GstBaseSink * sink,
     GstBuffer * buffer);
 static GstFlowReturn gst_quicsinkpps_render (GstBaseSink * sink,
@@ -219,7 +201,6 @@ gst_quicsinkpps_class_init (GstQuicsinkppsClass * klass)
 
 }
 
-//FIXME: pass this as part of the peer_ctx:
 static SSL_CTX *static_ssl_ctx;
 static gchar *keylog_file;
 
@@ -360,30 +341,15 @@ static lsquic_stream_ctx_t *gst_quicsinkpps_on_new_stream (void *stream_if_ctx, 
     return (void *) quicsinkpps;
 }
 
-
+//These functions are not used, but must be defined for lsquic to work
 static gsize gst_quicsinkpps_readf (void *ctx, const unsigned char *data, size_t len, int fin)
 {
     struct lsquic_stream *stream = (struct lsquic_stream *) ctx;
     GstQuicsinkpps *quicsinkpps = GST_QUICSINKPPS ((void *) lsquic_stream_get_ctx(stream));
 
-    // if (len) 
-    // {
-    //     quicsinkpps->stream_ctx.offset = len;
-    //     memcpy(quicsinkpps->stream_ctx.buffer, data, len);
-    //     GST_DEBUG_OBJECT(quicsinkpps, "MW: Read %lu bytes from stream", len);
-    //     printf("Read %s", quicsinkpps->stream_ctx.buffer);
-    //     fflush(stdout);
-    // }
-    // if (fin)
-    // {
-    //     GST_DEBUG_OBJECT(quicsinkpps, "MW: Read end of stream, for the purpose of this test we want to write the reverse back");
-    //     lsquic_stream_shutdown(stream, 0);
-    //     lsquic_stream_wantwrite(stream, 1);
-    // }
     return len;
 }
 
-//FIXME: This function is currently set up for test purpose. It will need to be modified.
 static void gst_quicsinkpps_on_read (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx)
 {
     GstQuicsinkpps *quicsinkpps = GST_QUICSINKPPS (stream_ctx);
@@ -433,8 +399,6 @@ static void gst_quicsinkpps_on_write (struct lsquic_stream *stream, lsquic_strea
     const gsize buffer_size = quicsinkpps->stream_ctx.buffer_size;
     gssize bytes_written;
 
-    // GST_DEBUG_OBJECT(quicsinkpps, "MW: writing to stream, total buffer size = (%lu bytes)", buffer_size);
-
     bytes_written = lsquic_stream_writef(stream, &buffer_reader);
     if (bytes_written > 0)
     {
@@ -455,7 +419,6 @@ static void gst_quicsinkpps_on_write (struct lsquic_stream *stream, lsquic_strea
 static void gst_quicsinkpps_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx)
 {
   GstQuicsinkpps *quicsinkpps = GST_QUICSINKPPS (stream_ctx);
-  // GST_DEBUG_OBJECT(quicsinkpps, "MW: stream closed");
 }
 
 static void
@@ -632,51 +595,7 @@ gst_quicsinkpps_get_caps (GstBaseSink * sink, GstCaps * filter)
   return caps;
 }
 
-/* fixate sink caps during pull-mode negotiation */
-// static GstCaps *
-// gst_quicsinkpps_fixate (GstBaseSink * sink, GstCaps * caps)
-// {
-//   GstQuicsinkpps *quicsinkpps = GST_QUICSINKPPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkpps, "fixate");
-
-//   return NULL;
-// }
-
-// /* start or stop a pulling thread */
-// static gboolean
-// gst_quicsinkpps_activate_pull (GstBaseSink * sink, gboolean active)
-// {
-//   GstQuicsinkpps *quicsinkpps = GST_QUICSINKPPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkpps, "activate_pull");
-
-//   return TRUE;
-// }
-
-// /* get the start and end times for syncing on this buffer */
-// static void
-// gst_quicsinkpps_get_times (GstBaseSink * sink, GstBuffer * buffer,
-//     GstClockTime * start, GstClockTime * end)
-// {
-//   GstQuicsinkpps *quicsinkpps = GST_QUICSINKPPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkpps, "get_times");
-
-// }
-
-// /* propose allocation parameters for upstream */
-// static gboolean
-// gst_quicsinkpps_propose_allocation (GstBaseSink * sink, GstQuery * query)
-// {
-//   GstQuicsinkpps *quicsinkpps = GST_QUICSINKPPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkpps, "propose_allocation");
-
-//   return TRUE;
-// }
-
-/* start and stop processing, ideal for opening/closing the resource */
+/* Set up lsquic and establish a connection to the client */
 static gboolean
 gst_quicsinkpps_start (GstBaseSink * sink)
 {
@@ -782,7 +701,6 @@ gst_quicsinkpps_start (GstBaseSink * sink)
     return FALSE;
   }
 
-  //TODO: Refactor into a gstquic utils function
   //set ip flags
   //Set flags to allow the original destination address to be retrieved.
   activate = 1;
@@ -903,60 +821,6 @@ gst_quicsinkpps_unlock_stop (GstBaseSink * sink)
   return TRUE;
 }
 
-// /* notify subclass of query */
-// static gboolean
-// gst_quicsinkpps_query (GstBaseSink * sink, GstQuery * query)
-// {
-//   GstQuicsinkpps *quicsinkpps = GST_QUICSINKPPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkpps, "query");
-
-//   return TRUE;
-// }
-
-// /* notify subclass of event */
-// static gboolean
-// gst_quicsinkpps_event (GstBaseSink * sink, GstEvent * event)
-// {
-//   GstQuicsinkpps *quicsinkpps = GST_QUICSINKPPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkpps, "event");
-
-//   return TRUE;
-// }
-
-// /* wait for eos or gap, subclasses should chain up to parent first */
-// static GstFlowReturn
-// gst_quicsinkpps_wait_event (GstBaseSink * sink, GstEvent * event)
-// {
-//   GstQuicsinkpps *quicsinkpps = GST_QUICSINKPPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkpps, "wait_event");
-
-//   return GST_FLOW_OK;
-// }
-
-// /* notify subclass of buffer or list before doing sync */
-// static GstFlowReturn
-// gst_quicsinkpps_prepare (GstBaseSink * sink, GstBuffer * buffer)
-// {
-//   GstQuicsinkpps *quicsinkpps = GST_QUICSINKPPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkpps, "prepare");
-
-//   return GST_FLOW_OK;
-// }
-
-// static GstFlowReturn
-// gst_quicsinkpps_prepare_list (GstBaseSink * sink, GstBufferList * buffer_list)
-// {
-//   GstQuicsinkpps *quicsinkpps = GST_QUICSINKPPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkpps, "prepare_list");
-
-//   return GST_FLOW_OK;
-// }
-
 /* notify subclass of preroll buffer or real buffer */
 static GstFlowReturn
 gst_quicsinkpps_preroll (GstBaseSink * sink, GstBuffer * buffer)
@@ -968,6 +832,9 @@ gst_quicsinkpps_preroll (GstBaseSink * sink, GstBuffer * buffer)
   return GST_FLOW_OK;
 }
 
+/* Write data from upstream buffers to a stream.
+   every buffer will contain 1 complete RTP packet,
+   so a new stream is created per buffer */
 static GstFlowReturn
 gst_quicsinkpps_render (GstBaseSink * sink, GstBuffer * buffer)
 {

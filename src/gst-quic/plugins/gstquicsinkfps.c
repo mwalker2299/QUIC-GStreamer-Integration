@@ -20,15 +20,15 @@
  * SECTION:element-gstquicsinkfps
  *
  * The quicsinkfps element acts as a QUIC server. This element is solely for 
- * experimental purposes and expects to receive rtp packets. 
- * The element utilises one stream per rtp packet sent.
+ * experimental purposes. 
+ * The element utilises one stream per frame sent.
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -v filesrc location=\"/home/matt/Documents/zoom_recording.mp4\" ! qtdemux name=demux  demux.video_0  ! rtph264pay seqnum-offset=0 ! quicsinkfps host={addr} port=5000 keylog={keylog}"
+ * gst-launch-1.0 -v filesrc location=\"test.mp4\" ! qtdemux name=demux  demux.video_0  ! rtph264pay seqnum-offset=0 mtu=1398 ! rtpstreampay ! quicsinkfps host=127.0.0.1 port=5000 keylog=SSL.keys sync=false"
  * ]|
- * Send rtp packets over the network.
+ * Send packets over the network via QUIC.
  * </refsect2>
  */
 
@@ -41,8 +41,6 @@
 #include "gstquicsinkfps.h"
 #include "gstquicutils.h"
 
-//FIXME: Theses are test defaults and should be updated to a more appropriate value before code is adapted for general use
-//FIXME: Move defines to gstquicutils.h?
 #define QUIC_SERVER 1
 #define QUIC_DEFAULT_PORT 12345
 #define QUIC_DEFAULT_HOST "127.0.0.1"
@@ -74,26 +72,11 @@ static void gst_quicsinkfps_dispose (GObject * object);
 static void gst_quicsinkfps_finalize (GObject * object);
 
 static GstCaps *gst_quicsinkfps_get_caps (GstBaseSink * sink, GstCaps * filter);
-// static gboolean gst_quicsinkfps_set_caps (GstBaseSink * sink, GstCaps * caps);
-// static GstCaps *gst_quicsinkfps_fixate (GstBaseSink * sink, GstCaps * caps);
-// static gboolean gst_quicsinkfps_activate_pull (GstBaseSink * sink,
-//     gboolean active);
-// static void gst_quicsinkfps_get_times (GstBaseSink * sink, GstBuffer * buffer,
-//     GstClockTime * start, GstClockTime * end);
-// static gboolean gst_quicsinkfps_propose_allocation (GstBaseSink * sink,
-//     GstQuery * query);
 static gboolean gst_quicsinkfps_start (GstBaseSink * sink);
 static gboolean gst_quicsinkfps_stop (GstBaseSink * sink);
 static gboolean gst_quicsinkfps_unlock (GstBaseSink * sink);
 static gboolean gst_quicsinkfps_unlock_stop (GstBaseSink * sink);
-// static gboolean gst_quicsinkfps_query (GstBaseSink * sink, GstQuery * query);
 static gboolean gst_quicsinkfps_event (GstBaseSink * sink, GstEvent * event);
-// static GstFlowReturn gst_quicsinkfps_wait_event (GstBaseSink * sink,
-//     GstEvent * event);
-// static GstFlowReturn gst_quicsinkfps_prepare (GstBaseSink * sink,
-//     GstBuffer * buffer);
-// static GstFlowReturn gst_quicsinkfps_prepare_list (GstBaseSink * sink,
-//     GstBufferList * buffer_list);
 static GstFlowReturn gst_quicsinkfps_preroll (GstBaseSink * sink,
     GstBuffer * buffer);
 static GstFlowReturn gst_quicsinkfps_render (GstBaseSink * sink,
@@ -163,7 +146,7 @@ gst_quicsinkfps_class_init (GstQuicsinkfpsClass * klass)
       &gst_quicsinkfps_sink_template);
 
   gst_element_class_set_static_metadata (GST_ELEMENT_CLASS (klass),
-      "QUIC packet sender", "Sink/Network", "Send packets over the network via QUIC",
+      "QUIC packet sender", "Sink/Network", "Send packets over the network via QUIC (frame per stream)",
       "Matthew Walker <mjwalker2299@gmail.com>");
 
   gobject_class->set_property = gst_quicsinkfps_set_property;
@@ -197,29 +180,17 @@ gst_quicsinkfps_class_init (GstQuicsinkfpsClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   base_sink_class->get_caps = GST_DEBUG_FUNCPTR (gst_quicsinkfps_get_caps);
-  // base_sink_class->set_caps = GST_DEBUG_FUNCPTR (gst_quicsinkfps_set_caps);
-  // base_sink_class->fixate = GST_DEBUG_FUNCPTR (gst_quicsinkfps_fixate);
-  // base_sink_class->activate_pull =
-  //     GST_DEBUG_FUNCPTR (gst_quicsinkfps_activate_pull);
-  // base_sink_class->get_times = GST_DEBUG_FUNCPTR (gst_quicsinkfps_get_times);
-  // base_sink_class->propose_allocation =
-  //     GST_DEBUG_FUNCPTR (gst_quicsinkfps_propose_allocation);
   base_sink_class->start = GST_DEBUG_FUNCPTR (gst_quicsinkfps_start);
   base_sink_class->stop = GST_DEBUG_FUNCPTR (gst_quicsinkfps_stop);
   base_sink_class->unlock = GST_DEBUG_FUNCPTR (gst_quicsinkfps_unlock);
   base_sink_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_quicsinkfps_unlock_stop);
-  // base_sink_class->query = GST_DEBUG_FUNCPTR (gst_quicsinkfps_query);
   base_sink_class->event = GST_DEBUG_FUNCPTR (gst_quicsinkfps_event);
-  // base_sink_class->wait_event = GST_DEBUG_FUNCPTR (gst_quicsinkfps_wait_event);
-  // base_sink_class->prepare = GST_DEBUG_FUNCPTR (gst_quicsinkfps_prepare);
-  // base_sink_class->prepare_list = GST_DEBUG_FUNCPTR (gst_quicsinkfps_prepare_list);
   base_sink_class->preroll = GST_DEBUG_FUNCPTR (gst_quicsinkfps_preroll);
   base_sink_class->render = GST_DEBUG_FUNCPTR (gst_quicsinkfps_render);
   base_sink_class->render_list = GST_DEBUG_FUNCPTR (gst_quicsinkfps_render_list);
 
 }
 
-//FIXME: pass this as part of the peer_ctx:
 static SSL_CTX *static_ssl_ctx;
 static gchar *keylog_file;
 
@@ -360,30 +331,15 @@ static lsquic_stream_ctx_t *gst_quicsinkfps_on_new_stream (void *stream_if_ctx, 
     return (void *) quicsinkfps;
 }
 
-
+//These functions are unused, but need to be defined for lsquic to function
 static gsize gst_quicsinkfps_readf (void *ctx, const unsigned char *data, size_t len, int fin)
 {
     struct lsquic_stream *stream = (struct lsquic_stream *) ctx;
     GstQuicsinkfps *quicsinkfps = GST_QUICSINKFPS ((void *) lsquic_stream_get_ctx(stream));
 
-    // if (len) 
-    // {
-    //     quicsinkfps->stream_ctx.offset = len;
-    //     memcpy(quicsinkfps->stream_ctx.buffer, data, len);
-    //     GST_DEBUG_OBJECT(quicsinkfps, "MW: Read %lu bytes from stream", len);
-    //     printf("Read %s", quicsinkfps->stream_ctx.buffer);
-    //     fflush(stdout);
-    // }
-    // if (fin)
-    // {
-    //     GST_DEBUG_OBJECT(quicsinkfps, "MW: Read end of stream, for the purpose of this test we want to write the reverse back");
-    //     lsquic_stream_shutdown(stream, 0);
-    //     lsquic_stream_wantwrite(stream, 1);
-    // }
     return len;
 }
 
-//FIXME: This function is currently set up for test purpose. It will need to be modified.
 static void gst_quicsinkfps_on_read (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx)
 {
     GstQuicsinkfps *quicsinkfps = GST_QUICSINKFPS (stream_ctx);
@@ -455,7 +411,6 @@ static void gst_quicsinkfps_on_write (struct lsquic_stream *stream, lsquic_strea
 static void gst_quicsinkfps_on_close (struct lsquic_stream *stream, lsquic_stream_ctx_t *stream_ctx)
 {
   GstQuicsinkfps *quicsinkfps = GST_QUICSINKFPS (stream_ctx);
-  // GST_DEBUG_OBJECT(quicsinkfps, "MW: stream closed");
 }
 
 static void
@@ -640,51 +595,8 @@ gst_quicsinkfps_get_caps (GstBaseSink * sink, GstCaps * filter)
   return caps;
 }
 
-/* fixate sink caps during pull-mode negotiation */
-// static GstCaps *
-// gst_quicsinkfps_fixate (GstBaseSink * sink, GstCaps * caps)
-// {
-//   GstQuicsinkfps *quicsinkfps = GST_QUICSINKFPS (sink);
 
-//   GST_DEBUG_OBJECT (quicsinkfps, "fixate");
-
-//   return NULL;
-// }
-
-// /* start or stop a pulling thread */
-// static gboolean
-// gst_quicsinkfps_activate_pull (GstBaseSink * sink, gboolean active)
-// {
-//   GstQuicsinkfps *quicsinkfps = GST_QUICSINKFPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkfps, "activate_pull");
-
-//   return TRUE;
-// }
-
-// /* get the start and end times for syncing on this buffer */
-// static void
-// gst_quicsinkfps_get_times (GstBaseSink * sink, GstBuffer * buffer,
-//     GstClockTime * start, GstClockTime * end)
-// {
-//   GstQuicsinkfps *quicsinkfps = GST_QUICSINKFPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkfps, "get_times");
-
-// }
-
-// /* propose allocation parameters for upstream */
-// static gboolean
-// gst_quicsinkfps_propose_allocation (GstBaseSink * sink, GstQuery * query)
-// {
-//   GstQuicsinkfps *quicsinkfps = GST_QUICSINKFPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkfps, "propose_allocation");
-
-//   return TRUE;
-// }
-
-/* start and stop processing, ideal for opening/closing the resource */
+/* Set up lsquic and establish a connection to the client */
 static gboolean
 gst_quicsinkfps_start (GstBaseSink * sink)
 {
@@ -803,7 +715,6 @@ gst_quicsinkfps_start (GstBaseSink * sink)
     return FALSE;
   }
 
-  //TODO: Refactor into a gstquic utils function
   //set ip flags
   //Set flags to allow the original destination address to be retrieved.
   activate = 1;
@@ -930,17 +841,6 @@ gst_quicsinkfps_unlock_stop (GstBaseSink * sink)
   return TRUE;
 }
 
-// /* notify subclass of query */
-// static gboolean
-// gst_quicsinkfps_query (GstBaseSink * sink, GstQuery * query)
-// {
-//   GstQuicsinkfps *quicsinkfps = GST_QUICSINKFPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkfps, "query");
-
-//   return TRUE;
-// }
-
 /* notify subclass of event */
 static gboolean
 gst_quicsinkfps_event (GstBaseSink * sink, GstEvent * event)
@@ -963,38 +863,6 @@ gst_quicsinkfps_event (GstBaseSink * sink, GstEvent * event)
   return ret;
 }
 
-// /* wait for eos or gap, subclasses should chain up to parent first */
-// static GstFlowReturn
-// gst_quicsinkfps_wait_event (GstBaseSink * sink, GstEvent * event)
-// {
-//   GstQuicsinkfps *quicsinkfps = GST_QUICSINKFPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkfps, "wait_event");
-
-//   return GST_FLOW_OK;
-// }
-
-// /* notify subclass of buffer or list before doing sync */
-// static GstFlowReturn
-// gst_quicsinkfps_prepare (GstBaseSink * sink, GstBuffer * buffer)
-// {
-//   GstQuicsinkfps *quicsinkfps = GST_QUICSINKFPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkfps, "prepare");
-
-//   return GST_FLOW_OK;
-// }
-
-// static GstFlowReturn
-// gst_quicsinkfps_prepare_list (GstBaseSink * sink, GstBufferList * buffer_list)
-// {
-//   GstQuicsinkfps *quicsinkfps = GST_QUICSINKFPS (sink);
-
-//   GST_DEBUG_OBJECT (quicsinkfps, "prepare_list");
-
-//   return GST_FLOW_OK;
-// }
-
 /* notify subclass of preroll buffer or real buffer */
 static GstFlowReturn
 gst_quicsinkfps_preroll (GstBaseSink * sink, GstBuffer * buffer)
@@ -1006,6 +874,8 @@ gst_quicsinkfps_preroll (GstBaseSink * sink, GstBuffer * buffer)
   return GST_FLOW_OK;
 }
 
+/* Write data from upstream buffers to a stream.
+   if the buffer marks the start of a frame, create a new stream */
 static GstFlowReturn
 gst_quicsinkfps_render (GstBaseSink * sink, GstBuffer * buffer)
 {
