@@ -4,7 +4,6 @@ import argparse
 import os
 import json
 import shutil
-import analyser
 import test_loop
 
 def dir_path(string):
@@ -151,9 +150,6 @@ def main():
     # Mark test run as complete:
     done_file_marker = os.path.join(results_path, "DONE")
     open(done_file_marker, 'a').close()
-
-    # call analyser to analyse raw results
-    return analyser.analyse(results_path)
 
 
 if __name__ == "__main__":
