@@ -4,6 +4,8 @@ This project aims to determine how fully and partially reliable QUIC implementat
 
 To accomplish this, I will evaluate UDP and each of our QUIC implementations under different network conditions which emulate real world scenarios. This file describes the parameters that will vary between tests.
 
+**NOTE: These were the original parameters that were going to be tested. However, the combination of all of the parameters below would take to0 long (over 30 days). These parameters were reduced to those found in parameters.json to allow testing to complete in a reasonable time. Initially, Jitter was still going to be included, but the first few test runs were bugged and so this parameter was cut to save time for the final test run.**
+
 
 ### Bandwidth
 
