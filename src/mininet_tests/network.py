@@ -47,29 +47,3 @@ def createDumbellTopo(link_params, servers, clients):
             host=CPULimitedHost, link=TCLink)
 
   return net
-
-
-# def basicPipelineTest(net):
-#     '''Create network and run simple performance test'''
-#     net.start()
-#     print( "Dumping host connections" )
-#     dumpNodeConnections( net.hosts )
-#     print( "Running Gstreamer pipeline on server" )
-#     server = net.get('server1')
-#     client = net.get('client1')
-#     print(client)
-#     result = server.cmd('export GST_DEBUG=\"*udp*:6\"')
-#     result = server.cmd('export GST_DEBUG_FILE=\"/home/matt/Documents/QUIC-GStreamer-Integration/src/mininet_tests/test_out.txt\"')
-#     result = server.cmd('gst-launch-1.0 -vvv audiotestsrc num-buffers=10 ! udpsink')
-#     print( result )
-#     server.cmd('tshark > /tmp/tshark.out &')
-#     sleep(1)
-#     net.ping([server,client])
-#     sleep(1)
-#     net.stop()
-
-# if __name__ == '__main__':
-#     setLogLevel( 'info' )
-#     link_params = {'delay': 10, 'loss': 0}
-#     net = createDumbellTopo(link_params, servers=1, clients=1)
-#     basicPipelineTest(net)
