@@ -3,7 +3,7 @@
 * Evaluating the Effectiveness of QUIC When Integrated Into Gstreamer
 * Matthew Walker
 * 2310528
-* DR. Colin Perkins
+* Dr. Colin Perkins
 
 ## Research completed
 
