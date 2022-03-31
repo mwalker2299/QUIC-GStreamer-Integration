@@ -113,7 +113,7 @@ def monitorThread(node, cmd, event):
 
 
 
-def run_test(test_params, stream_server_command, stream_client_command, ct_command, timeout, protocol_name, log_path, log_level):
+def run_test(test_params, stream_server_command, stream_client_command, ct_command, timeout, protocol_name, log_path, log_level, cert_path, key_path):
   # print(type(log_path))
 
   cross_traffic_enabled = test_params["cross_traffic"]
@@ -135,6 +135,8 @@ def run_test(test_params, stream_server_command, stream_client_command, ct_comma
   client_gstreamer_log_path    = os.path.join(log_path, "gst-client.log")
   client_lsquic_log_path       = os.path.join(log_path, "lsquic-client.log")
   server_keylog_path           = os.path.join(log_path, "SSL.keys")
+
+  print(server_keylog_path)
   
 
 
@@ -167,7 +169,7 @@ def run_test(test_params, stream_server_command, stream_client_command, ct_comma
     client_side_tshark_command = "tshark -d udp.port==5000,quic -T fields -e frame.time -e quic.stream.stream_id -e quic.stream.offset -e quic.stream.fin -e quic.stream_data -o \"tls.keylog_file:"+os.path.join(log_path, "SSL.keys")+"\" -i s2-eth1 > " + os.path.join(log_path, "client_side_timestamps.txt")
     server_side_tshark_command = "tshark -d udp.port==5000,quic -T fields -e frame.time -e quic.stream.stream_id -e quic.stream.offset -e quic.stream.fin -e quic.stream_data -o \"tls.keylog_file:"+os.path.join(log_path, "SSL.keys")+"\" -i s1-eth1 > " + os.path.join(log_path, "server_side_timestamps.txt")
 
-    stream_server_command = stream_server_command.format(addr=stream_server.IP(), lsquic_log=server_lsquic_log_path, keylog=server_keylog_path)
+    stream_server_command = stream_server_command.format(addr=stream_server.IP(), lsquic_log=server_lsquic_log_path, keylog=server_keylog_path, cert=cert_path, key=key_path)
     stream_client_command = stream_client_command.format(addr=stream_server.IP(), lsquic_log=client_lsquic_log_path, buffer_delay=test_params["buffer_delay"])
   else:
     print("PROTOCOL IS TCP")

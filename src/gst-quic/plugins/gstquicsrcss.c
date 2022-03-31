@@ -45,7 +45,7 @@
 #define QUIC_CLIENT 0
 #define QUIC_DEFAULT_PORT 12345
 #define QUIC_DEFAULT_HOST "127.0.0.1"
-#define QUIC_DEFAULT_LOG_PATH "/home/matt/Documents/lsquic-client-log.txt"
+#define QUIC_DEFAULT_LOG_PATH ""
 #define READ_BUFFER_SIZE 10000000
 
 GST_DEBUG_CATEGORY_STATIC (gst_quicsrcss_debug_category);
@@ -521,18 +521,27 @@ gst_quicsrcss_start (GstBaseSrc * src)
   }
   
   /* Initialize logging */
-  FILE *s_log_fh = fopen(quicsrcss->log_file, "wb");
+  if (quicsrcss->log_file[0] != '\0') {
+    FILE *s_log_fh = fopen(quicsrcss->log_file, "wb");
 
-  if (0 != lsquic_set_log_level("debug"))
-  {
-    GST_ELEMENT_ERROR (quicsrcss, LIBRARY, INIT,
-        (NULL),
-        ("Failed to initialise lsquic"));
-    return FALSE;
+    if (s_log_fh != NULL)
+    {    
+      if (0 != lsquic_set_log_level("debug"))
+      {
+        GST_ELEMENT_ERROR (quicsrcss, LIBRARY, INIT,
+            (NULL),
+            ("Failed to initialise lsquic logging"));
+        return FALSE;
+      }
+
+    setvbuf(s_log_fh, NULL, _IOLBF, 0);
+    lsquic_logger_init(&logger_if, s_log_fh, LLTS_HHMMSSUS);
+    } else {
+      GST_WARNING_OBJECT (quicsrcss, "Could not open logfile, errno: %d", errno);
+    }
+  } else {
+    GST_WARNING_OBJECT (quicsrcss, "No logfile provided, lsquic logs will not be created");
   }
-
-  setvbuf(s_log_fh, NULL, _IOLBF, 0);
-  lsquic_logger_init(&logger_if, s_log_fh, LLTS_HHMMSSUS);
 
   // Initialize engine settings to default values
   lsquic_engine_init_settings(&engine_settings, QUIC_CLIENT);

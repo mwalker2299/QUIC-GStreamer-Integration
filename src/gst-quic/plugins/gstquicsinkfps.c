@@ -44,10 +44,10 @@
 #define QUIC_SERVER 1
 #define QUIC_DEFAULT_PORT 12345
 #define QUIC_DEFAULT_HOST "127.0.0.1"
-#define QUIC_DEFAULT_CERTIFICATE_PATH "/home/matt/Documents/lsquic-tutorial/mycert-cert.pem"
-#define QUIC_DEFAULT_KEY_PATH "/home/matt/Documents/lsquic-tutorial/mycert-key.pem"
-#define QUIC_DEFAULT_LOG_PATH "/home/matt/Documents/lsquic-server-log.txt"
-#define QUIC_DEFAULT_KEYLOG_PATH "/home/matt/Documents/QUIC-SSL.keys"
+#define QUIC_DEFAULT_CERTIFICATE_PATH ""
+#define QUIC_DEFAULT_KEY_PATH ""
+#define QUIC_DEFAULT_LOG_PATH ""
+#define QUIC_DEFAULT_KEYLOG_PATH ""
 
 /* We are interested in the original destination address of received packets.
   The IP_RECVORIGDSTADDR flag can be set on sockets to allow this. However,
@@ -226,7 +226,7 @@ gst_quicsinkfps_open_keylog_file (const SSL *ssl)
 
   fh = fopen(keylog_file, "ab");
   if (!fh)
-      GST_ERROR_OBJECT(NULL,"Could not open %s for appending: %s", keylog_file, strerror(errno));
+      GST_ERROR_OBJECT(NULL,"Could not open SSL key logging file \"%s\" for appending: %s", keylog_file, strerror(errno));
   return fh;
 }
 
@@ -266,7 +266,7 @@ gst_quicsinkfps_load_cert_and_key (GstQuicsinkfps * quicsinkfps)
         SSL_CTX_free(quicsinkfps->ssl_ctx);
         GST_ELEMENT_ERROR (quicsinkfps, LIBRARY, FAILED,
           (NULL),
-          ("SSL_CTX_use_certificate_chain_file failed, is the path to the cert file correct? path = %s", quicsinkfps->cert_file));
+          ("SSL_CTX_use_certificate_chain_file failed, is the path to the cert file correct? path = %sIf not provide it via the launch line argument: cert", quicsinkfps->cert_file));
     }
     if (!SSL_CTX_use_PrivateKey_file(quicsinkfps->ssl_ctx, quicsinkfps->key_file,
                                                             SSL_FILETYPE_PEM))
@@ -274,7 +274,7 @@ gst_quicsinkfps_load_cert_and_key (GstQuicsinkfps * quicsinkfps)
         SSL_CTX_free(quicsinkfps->ssl_ctx);
         GST_ELEMENT_ERROR (quicsinkfps, LIBRARY, FAILED,
           (NULL),
-          ("SSL_CTX_use_PrivateKey_file failed, is the path to the key file correct? path = %s", quicsinkfps->key_file));
+          ("SSL_CTX_use_PrivateKey_file failed, is the path to the key file correct?\nIf not provide it via the launch line argument: key path = %s", quicsinkfps->key_file));
     }
     // Set callback for writing SSL secrets to keylog file
     SSL_CTX_set_keylog_callback(quicsinkfps->ssl_ctx, gst_quicsinkfps_log_ssl_key);
@@ -478,6 +478,9 @@ gst_quicsinkfps_set_property (GObject * object, guint property_id,
       g_free (quicsinkfps->key_file);
       quicsinkfps->key_file = g_strdup (g_value_get_string (value));
     case PROP_KEYLOG:
+      if (keylog_file[0] != '\0') {
+        break;
+      }
       if (!g_value_get_string (value)) {
         g_warning ("SSL keylog path property cannot be NULL");
         break;
@@ -621,18 +624,27 @@ gst_quicsinkfps_start (GstBaseSink * sink)
   GST_DEBUG_OBJECT(quicsinkfps, "Host is: %s, port is: %d, log is: %s", quicsinkfps->host, quicsinkfps->port, quicsinkfps->log_file);
 
   /* Initialize logging */
-  FILE *s_log_fh = fopen(quicsinkfps->log_file, "wb");
+  if (quicsinkfps->log_file[0] != '\0') {
+    FILE *s_log_fh = fopen(quicsinkfps->log_file, "wb");
 
-  if (0 != lsquic_set_log_level("debug"))
-  {
-    GST_ELEMENT_ERROR (quicsinkfps, LIBRARY, INIT,
-        (NULL),
-        ("Failed to initialise lsquic"));
-    return FALSE;
+    if (s_log_fh != NULL)
+    {    
+      if (0 != lsquic_set_log_level("debug"))
+      {
+        GST_ELEMENT_ERROR (quicsinkfps, LIBRARY, INIT,
+            (NULL),
+            ("Failed to initialise lsquic logging"));
+        return FALSE;
+      }
+
+      setvbuf(s_log_fh, NULL, _IOLBF, 0);
+      lsquic_logger_init(&logger_if, s_log_fh, LLTS_HHMMSSUS);
+    } else {
+      GST_WARNING_OBJECT (quicsinkfps, "Could not open logfile, errno: %d", errno);
+    }
+  } else {
+    GST_WARNING_OBJECT (quicsinkfps, "No logfile provided, lsquic logs will not be created");
   }
-
-  setvbuf(s_log_fh, NULL, _IOLBF, 0);
-  lsquic_logger_init(&logger_if, s_log_fh, LLTS_HHMMSSUS);
 
   // Initialize engine settings to default values
   lsquic_engine_init_settings(&engine_settings, QUIC_SERVER);
@@ -684,6 +696,19 @@ gst_quicsinkfps_start (GstBaseSink * sink)
   }
 
   // Set up SSL context
+  if (quicsinkfps->cert_file [0] == '\0') {
+    GST_ELEMENT_ERROR (quicsinkfps, RESOURCE, FAILED,
+            (NULL),
+            ("You have not provided an SSL certificate. Please provide one with the `cert` cmdline option"));
+    return FALSE;
+  }
+
+  if (quicsinkfps->key_file [0] == '\0') {
+    GST_ELEMENT_ERROR (quicsinkfps, RESOURCE, FAILED,
+            (NULL),
+            ("You have not provided an SSL key. Please provide one with the `key` cmdline option"));
+    return FALSE;
+  }
   gst_quicsinkfps_load_cert_and_key(quicsinkfps);
 
   // Create socket

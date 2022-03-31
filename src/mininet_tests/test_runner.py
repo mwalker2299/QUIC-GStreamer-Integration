@@ -84,9 +84,14 @@ def main():
     param_config_file = open(param_config_path, "r")
     param_config = json.load(param_config_file)
 
-    # Create results director if it does not already exist.
+    # Create results directory if it does not already exist.
     if (not os.path.exists(results_path)):
       os.mkdir(results_path)
+
+    # Generate SSL Certifcate and Key used by QUIC elements
+    os.system("sh generate_cert.sh -o " + results_path)
+    cert_path = os.path.join(results_path, "host.cert")
+    key_path  = os.path.join(results_path, "host.key")
 
     # For each iteration, test each possible param combination. Repeat for specified number of iters. 
     # Before the parameters and logging path are passed to the test loop, we must create the directory structure which will hold the results.
@@ -145,7 +150,7 @@ def main():
                     log_path = create_directory(cross_traffic_results_path, iteration_descriptor)
 
                     # Run test (We set timeout to our streams runtime + 5 seconds to account for possibility of loss causing increased run_time)
-                    test_loop.run_test(test_params, stream_server_command, stream_client_command, ct_command, int(run_time)+5, protocol_name, log_path, log_level)
+                    test_loop.run_test(test_params, stream_server_command, stream_client_command, ct_command, int(run_time)+5, protocol_name, log_path, log_level, cert_path, key_path)
             
     # Mark test run as complete:
     done_file_marker = os.path.join(results_path, "DONE")
