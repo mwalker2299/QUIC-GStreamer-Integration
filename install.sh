@@ -68,5 +68,16 @@ cd build
 cmake -G Ninja ..
 ninja
 
+echo "building GStreamer"
+cd $ROOT/submodules/gst-build
+mkdir build
+meson build/
+ninja -C build/
+
+echo "build Mininet"
+cd $ROOT/submodules/mininet
+mkdir ../mininet_install_dir
+mininet/util/install.sh -s ../mininet_install_dir -a
+
 
 
