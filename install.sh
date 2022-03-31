@@ -99,6 +99,9 @@ util/install.sh -s ../mininet_install_dir -a
 echo "Installing gdown to pull BBB raw video"
 pip3 install --upgrade --no-cache gdown
 
+echo "Installing pandas (Used by analysis scripts)"
+pip3 install --upgrade --no-cache pandas
+
 if [ ! -f ${ROOT}/src/mininet_tests/BBB_dec.raw ]
 then
   echo "Downloading raw Big Buck Bunny Video"
