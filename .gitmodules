@@ -7,3 +7,6 @@
 [submodule "wireshark"]
 	path = wireshark
 	url = https://github.com/wireshark/wireshark.git
+[submodule "gst-build"]
+	path = gst-build
+	url = https://github.com/mwalker2299/gst-build.git
