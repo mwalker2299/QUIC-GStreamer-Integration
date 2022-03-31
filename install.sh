@@ -43,12 +43,12 @@ echo "Cloning Submodules"
 git submodule update --init --recursive
 
 echo "Building BoringSSl"
-cd boringssl
+cd $ROOT/submodules/boringssl
 BORINGSSL=$PWD
 cmake -DBUILD_SHARED_LIBS=1 . && make
 
 echo "Building LSQUIC"
-cd ../lsquic
+cd $ROOT/submodules/lsquic
 git submodule init
 git submodule update
 
@@ -56,14 +56,13 @@ cmake -DLSQUIC_SHARED_LIB=1 -DBORINGSSL_DIR=$BORINGSSL .
 make
 
 echo "installing plugins"
-cd ../src/gst-quic/
+cd $ROOT/src/gst-quic/
 mkdir build
 cd build
 meson install
 
 echo "Plugins installed, building wireshark"
-cd $ROOT
-cd wireshark
+cd $ROOT/submodules/wireshark
 mkdir build
 cd build
 cmake -G Ninja ..

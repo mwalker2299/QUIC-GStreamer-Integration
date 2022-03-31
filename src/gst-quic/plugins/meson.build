@@ -9,16 +9,12 @@ cdata.set_quoted('GST_PACKAGE_NAME', 'GStreamer template Plug-ins')
 cdata.set_quoted('GST_PACKAGE_ORIGIN', 'https://gstreamer.freedesktop.org')
 configure_file(output : 'config.h', configuration : cdata)
 
+lsquic_dep = cc.find_library('lsquic', dirs: meson.current_source_dir() + '/../../../submodules/lsquic/src/liblsquic/', required: true)
+ssl_dep    = cc.find_library('ssl', dirs: meson.current_source_dir() + '/../../../submodules/boringssl/ssl/', required:true)
+crypto_dep = cc.find_library('crypto', dirs: meson.current_source_dir() + '/../../../submodules/boringssl/crypto/', required:true)
 
-lsquic_dep = cc.find_library('lsquic', dirs: '/home/matt/Documents/lsquic/src/liblsquic/', required: true)
-ssl_dep    = cc.find_library('ssl', dirs: '/home/matt/Documents/boringssl/ssl/', required:true)
-crypto_dep = cc.find_library('crypto', dirs: '/home/matt/Documents/boringssl/crypto/', required:true)
-
-lsquic_inc    = include_directories('/home/matt/Documents/lsquic/include')
-boringssl_inc = include_directories('/home/matt/Documents/boringssl/include')
-
-
-
+lsquic_inc    = include_directories('../../../submodules/lsquic/include')
+boringssl_inc = include_directories('../../../submodules/boringssl/include')
 # The quic Plugin
  gstquic_sources = [
   'gstquicsrcss.c',

@@ -1,12 +1,15 @@
 [submodule "boringssl"]
-	path = boringssl
+	path = submodules/boringssl
 	url = https://boringssl.googlesource.com/boringssl
 [submodule "lsquic"]
-	path = lsquic
+	path = submodules/lsquic
 	url = https://github.com/mwalker2299/lsquic.git
 [submodule "wireshark"]
-	path = wireshark
+	path = submodules/wireshark
 	url = https://github.com/wireshark/wireshark.git
 [submodule "gst-build"]
-	path = gst-build
+	path = submodules/gst-build
 	url = https://github.com/mwalker2299/gst-build.git
+[submodule "mininet"]
+	path = submodules/mininet
+	url = https://github.com/mininet/mininet
