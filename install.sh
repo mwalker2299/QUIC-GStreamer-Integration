@@ -36,6 +36,9 @@ apt install gstreamer1.0-doc -y
 apt install gstreamer1.0-plugins-bad -y
 apt install gstreamer1.0-qt5 -y
 apt install care -y
+apt install zlib1g-dev -y
+apt install zlib1g -y
+apt install flex -y
 
 
 
