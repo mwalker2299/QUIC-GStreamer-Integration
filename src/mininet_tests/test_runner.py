@@ -41,6 +41,10 @@ def init_argparse():
         "-pc", "--param_config", dest="param_config", default=os.path.join(os.getcwd(), "parameters.json"), type=file_path,
         help="Path to the link parameters json config file"
     )
+    parser.add_argument(
+      "-v", "--video", dest="video_path", default=os.path.join(os.getcwd(), "BBB_dec.raw"), type=file_path,
+        help="Path to directory where results dir will be created. Default is the current directory"
+    )
 
     return parser
 
@@ -76,6 +80,7 @@ def main():
     iterations = args.iters
     impl_config_path = args.impl_config
     param_config_path = args.param_config
+    video_path = args.video_path
 
     # Retrieve implementation and parameter config dictionaries 
     impl_config_file = open(impl_config_path, "r")
@@ -150,7 +155,7 @@ def main():
                     log_path = create_directory(cross_traffic_results_path, iteration_descriptor)
 
                     # Run test (We set timeout to our streams runtime + 5 seconds to account for possibility of loss causing increased run_time)
-                    test_loop.run_test(test_params, stream_server_command, stream_client_command, ct_command, int(run_time)+5, protocol_name, log_path, log_level, cert_path, key_path)
+                    test_loop.run_test(test_params, stream_server_command, stream_client_command, ct_command, int(run_time)+5, protocol_name, log_path, log_level, cert_path, key_path, video_path)
             
     # Mark test run as complete:
     done_file_marker = os.path.join(results_path, "DONE")

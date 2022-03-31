@@ -113,7 +113,7 @@ def monitorThread(node, cmd, event):
 
 
 
-def run_test(test_params, stream_server_command, stream_client_command, ct_command, timeout, protocol_name, log_path, log_level, cert_path, key_path):
+def run_test(test_params, stream_server_command, stream_client_command, ct_command, timeout, protocol_name, log_path, log_level, cert_path, key_path, video_path):
   # print(type(log_path))
 
   cross_traffic_enabled = test_params["cross_traffic"]
@@ -162,21 +162,21 @@ def run_test(test_params, stream_server_command, stream_client_command, ct_comma
     client_side_tshark_command = "tshark -T fields -e frame.time -e rtp.seq -i s2-eth1 > " + os.path.join(log_path, "client_side_timestamps.txt")
     server_side_tshark_command = "tshark -T fields -e frame.time -e rtp.seq -i s1-eth1 > " + os.path.join(log_path, "server_side_timestamps.txt")
 
-    stream_server_command = stream_server_command.format(addr=stream_client.IP())
+    stream_server_command = stream_server_command.format(addr=stream_client.IP(), raw_video_path=video_path)
     stream_client_command = stream_client_command.format(addr=stream_client.IP(), buffer_delay=test_params["buffer_delay"])
   elif "QUIC" in protocol_name:
     print("PROTOCOL IS QUIC")
     client_side_tshark_command = "tshark -d udp.port==5000,quic -T fields -e frame.time -e quic.stream.stream_id -e quic.stream.offset -e quic.stream.fin -e quic.stream_data -o \"tls.keylog_file:"+os.path.join(log_path, "SSL.keys")+"\" -i s2-eth1 > " + os.path.join(log_path, "client_side_timestamps.txt")
     server_side_tshark_command = "tshark -d udp.port==5000,quic -T fields -e frame.time -e quic.stream.stream_id -e quic.stream.offset -e quic.stream.fin -e quic.stream_data -o \"tls.keylog_file:"+os.path.join(log_path, "SSL.keys")+"\" -i s1-eth1 > " + os.path.join(log_path, "server_side_timestamps.txt")
 
-    stream_server_command = stream_server_command.format(addr=stream_server.IP(), lsquic_log=server_lsquic_log_path, keylog=server_keylog_path, cert=cert_path, key=key_path)
+    stream_server_command = stream_server_command.format(addr=stream_server.IP(), lsquic_log=server_lsquic_log_path, keylog=server_keylog_path, cert=cert_path, key=key_path, raw_video_path=video_path)
     stream_client_command = stream_client_command.format(addr=stream_server.IP(), lsquic_log=client_lsquic_log_path, buffer_delay=test_params["buffer_delay"])
   else:
     print("PROTOCOL IS TCP")
     client_side_tshark_command = "tshark -d tcp.port==5000,rtp -T fields -e frame.time -e tcp.nxtseq -e tcp.payload -i s2-eth1 -o tcp.reassemble_out_of_order:TRUE > " + os.path.join(log_path, "client_side_timestamps.txt")
     server_side_tshark_command = "tshark -d tcp.port==5000,rtp -T fields -e frame.time -e tcp.nxtseq -e rtp.seq -e tcp.payload -i s1-eth1 -o tcp.reassemble_out_of_order:TRUE > " + os.path.join(log_path, "server_side_timestamps.txt")
 
-    stream_server_command = stream_server_command.format(addr=stream_server.IP(), lsquic_log=server_lsquic_log_path, keylog=server_keylog_path)
+    stream_server_command = stream_server_command.format(addr=stream_server.IP(), lsquic_log=server_lsquic_log_path, keylog=server_keylog_path, raw_video_path=video_path)
     stream_client_command = stream_client_command.format(addr=stream_server.IP(), lsquic_log=client_lsquic_log_path, buffer_delay=test_params["buffer_delay"])
 
   if cross_traffic_enabled:
