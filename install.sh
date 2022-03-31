@@ -39,7 +39,7 @@ apt install care -y
 apt install zlib1g-dev -y
 apt install zlib1g -y
 apt install flex -y
-apt install python3-pip
+apt install python3-pip -y
 
 
 
