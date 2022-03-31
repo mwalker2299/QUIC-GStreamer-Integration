@@ -449,7 +449,7 @@ def extract_rtp_data_from_quic_stream_available(filename):
           streams[stream_id]          = [[0,0,""]]
           offsets_received[stream_id] = []
 
-
+        streams[stream_id] = sorted(streams[stream_id],key=lambda l:l[0])
 
         stream = streams[stream_id]
         first_stream_chunk = stream[0]
@@ -707,7 +707,7 @@ def calculate_time_diffs(packet_depature, packet_arrival):
   
   return result
 
-def convert_results_to_panda(results):
+def convert_stack_latency_results_to_panda(results):
   return pd.DataFrame(data=results, columns=["Packet Num.", "Stack Latency"])
 
 def save_results_datagram(time_diff_panda, directory):
@@ -721,10 +721,5 @@ def save_results_stream(arrival_time_diff_panda, available_time_diff_panda, dire
 
   available_time_diff_panda.to_csv(file_path_available, index=False)
   arrival_time_diff_panda.to_csv(file_path_arrival, index=False)
-
-
-def load_results(directory):
-  file_path = os.path.join(directory, "Stack_Latency.csv")
-  return pd.read_csv(file_path)
 
 
