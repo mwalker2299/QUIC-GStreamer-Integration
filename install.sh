@@ -39,37 +39,44 @@ apt install care -y
 apt install zlib1g-dev -y
 apt install zlib1g -y
 apt install flex -y
+apt install pip3
 
 
 
 echo "Cloning Submodules"
 git submodule update --init --recursive
 
-echo "Building BoringSSl"
+echo "installing BoringSSl"
 cd $ROOT/submodules/boringssl
 BORINGSSL=$PWD
 cmake -DBUILD_SHARED_LIBS=1 . && make
+cp $ROOT/submodules/boringssl/crypto/libcrypto.so /usr/local/lib/libcrypto.so
+cp $ROOT/submodules/boringssl/ssl/libssl.so /usr/local/lib/libssl.so
 
-echo "Building LSQUIC"
+echo "installing LSQUIC"
 cd $ROOT/submodules/lsquic
 git submodule init
 git submodule update
 
 cmake -DLSQUIC_SHARED_LIB=1 -DBORINGSSL_DIR=$BORINGSSL .
 make
+make install
+ldconfig
 
 echo "installing plugins"
 cd $ROOT/src/gst-quic/
 mkdir build
+meson build
 cd build
 meson install
 
-echo "Plugins installed, building wireshark"
+echo "Plugins installed, installing wireshark"
 cd $ROOT/submodules/wireshark
 mkdir build
 cd build
 cmake -G Ninja ..
 ninja
+ninja install
 
 echo "building GStreamer"
 cd $ROOT/submodules/gst-build
@@ -80,7 +87,7 @@ ninja -C build/
 echo "build Mininet"
 cd $ROOT/submodules/mininet
 mkdir ../mininet_install_dir
-mininet/util/install.sh -s ../mininet_install_dir -a
+util/install.sh -s ../mininet_install_dir -a
 
 
 echo "Installing gdown to pull BBB raw video"
@@ -89,7 +96,3 @@ pip3 install --upgrade --no-cache gdown
 echo "Downloading raw Big Buck Bunny Video"
 cd $ROOT/src/mininet_tests
 gdown --id 1x5irCt_B2XdU38uEp-rjXOeF5eNCBDiW
-
-
-
-
