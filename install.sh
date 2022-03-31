@@ -39,7 +39,7 @@ apt install care -y
 apt install zlib1g-dev -y
 apt install zlib1g -y
 apt install flex -y
-apt install pip3
+apt install python3-pip
 
 
 
@@ -83,6 +83,12 @@ cd $ROOT/submodules/gst-build
 mkdir build
 meson build/
 ninja -C build/
+cd gstreamer
+git pull origin
+git reset --hard origin
+cd ../gst-plugins-good
+git pull origin
+git reset --hard origin
 
 echo "build Mininet"
 cd $ROOT/submodules/mininet
@@ -93,6 +99,9 @@ util/install.sh -s ../mininet_install_dir -a
 echo "Installing gdown to pull BBB raw video"
 pip3 install --upgrade --no-cache gdown
 
-echo "Downloading raw Big Buck Bunny Video"
-cd $ROOT/src/mininet_tests
-gdown --id 1x5irCt_B2XdU38uEp-rjXOeF5eNCBDiW
+if [ ! -f ${ROOT}/src/mininet_tests/BBB_dec.raw ]
+then
+  echo "Downloading raw Big Buck Bunny Video"
+  cd $ROOT/src/mininet_tests
+  gdown --id 1x5irCt_B2XdU38uEp-rjXOeF5eNCBDiW
+fi
