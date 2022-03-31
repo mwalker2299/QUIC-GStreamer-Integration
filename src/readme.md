@@ -89,5 +89,11 @@ If you are running many tests, you may wish to run the `avoid_deadlocks.sh` wrap
 ./avoid_deadlocks.sh -o {$OUTPUT_DIR} -i {$ITERS}
 ```
 
+If you see an error which claims a controller is already running on port 6653, then run thw following and try again:
+
+```
+sudo fuser -k 6653/tcp
+```
+
 **NOTE: As mentioned above, these tests generate a lot of logs (~160MB per test). I would strongly advise reducing the test parameter set inside `parameters.json` unless you have a terabyte external drive lying around.** 
 
