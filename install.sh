@@ -80,4 +80,13 @@ mkdir ../mininet_install_dir
 mininet/util/install.sh -s ../mininet_install_dir -a
 
 
+echo "Installing gdown to pull BBB raw video"
+pip3 install --upgrade --no-cache gdown
+
+echo "Downloading raw Big Buck Bunny Video"
+cd $ROOT/src/mininet_tests
+gdown --id 1x5irCt_B2XdU38uEp-rjXOeF5eNCBDiW
+
+
+
 
