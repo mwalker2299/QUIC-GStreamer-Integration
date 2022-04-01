@@ -1,11 +1,8 @@
 from datetime import datetime
-from re import U
-import time
 import os
 import pandas as pd
 import sys
 import numpy as np
-np.set_printoptions(threshold=sys.maxsize)
 
 
 # Format of Nal unit type identification log line and last sequence number identification log line on server side
@@ -19,6 +16,7 @@ np.set_printoptions(threshold=sys.maxsize)
 0:00:00.197921663 [334m476745[00m 0x561e00ca16a0 [33;01mLOG    [00m [00m    rtpbasedepayload gstrtpbasedepayload.c:394:gst_rtp_base_depayload_handle_buffer:<rtph264depay0>[00m discont 0, seqnum 6809, rtptime 2331433938, pts 0:00:00.002168297, dts 0:00:00.002797405
 0:00:00.197936443 [334m476745[00m 0x561e00ca16a0 [37mDEBUG  [00m [00m        rtph264depay gstrtph264depay.c:892:gst_rtp_h264_depay_handle_nal:<rtph264depay0>[00m handle NAL type 8
 '''
+
 
 # Iterates through each line in the server side logs. 
 # It first identifies the type of a Nal unit and the timestamp at which it arrived. 
@@ -285,7 +283,7 @@ def extract_frame_data(directory):
 
 # calculate_time_diffs will provide a -1 timestamp to any frames which could not be decoded.
 # We can then identify which frames are useful (Any complete P-frames following a missing I-frame are useless)
-def identify_useful_frames(frame_time_diff):
+def identify_useful_frames(frame_time_diff, dirpath):
   last_i_frame_was_complete = False
   total_frames           = 0
   useful_frames          = 0
@@ -303,7 +301,16 @@ def identify_useful_frames(frame_time_diff):
   last_i_frame_was_complete = False
 
 
-  for row in frame_time_diff:
+  for i,row in enumerate(frame_time_diff):
+    #There seems to a bug that impacts the final frame for all implementations.
+    # As this represents only 1 out of 1440 frames, I have chosen to omit this 
+    # frame from the analysis
+    try:
+      frame_time_diff[i+1]
+    except:
+      print(i)
+      continue
+    
     total_frames+=1
     frame_type = row[1]
     successfully_decoded = (int(row[2]) != -1)
@@ -356,6 +363,9 @@ def identify_useful_frames(frame_time_diff):
   '\% Useful Frames': [ratio_useful_frames]
   }
 
+  if ratio_complete_frames < 95 and "UDP" in dirpath:
+    print(dirpath, flush=True)
+
   return pd.DataFrame(results)
 
 
@@ -369,17 +379,72 @@ def save_frame_results(time_diff_panda, frame_stats_panda, directory):
   frame_stats_panda.to_csv(frame_stats_file_path, index=False)
 
 
+# Determines the time at which each packet was passed to the protocol stack
+# for sending. As lsquic blocks until it can send. We cannot simply measure the time
+# between buffers arriving at the network element and the packets being sent. If we did
+# Many packets would appear to have a very low sending delay, despite being sent much later
+# than they should have been. However, the decoder runs on a seperate thread, so we can
+# count from the time an encoded frame is pushed (with a small delay between packets).
+def determine_packet_send_time(directory):
+  server_log = os.path.join(directory, "gst-server.log")
+
+  # read through logs and determine the number of RTP packets per frame
+  # and frame timestamps
+  with open(server_log) as file:
+    frame_data = []
+    timestamp_in_milliseconds = -1
+    packet_count = 0
+    last_seq=-1
+
+    first_frame = True
+
+    for line in file:
+
+      if "frame PTS" in line:
+
+        if not first_frame:
+          frame_data.append([timestamp_in_milliseconds, packet_count])
+          packet_count = 0
+        else:
+          first_frame = False
+
+        timestamp = line[:17]
+
+        datetime_format = datetime.strptime(timestamp[:-3], '%H:%M:%S.%f')
+        timestamp_in_milliseconds = datetime_format.timestamp() * 1000
 
 
-# string  = "0:00:17.814566771 [336m1507487[00m 0x55806ef5c520 [37mDEBUG  [00m [00m          rtph264pay gstrtph264pay.c:821:gst_rtp_h264_pay_payload_nal:<rtph264pay0>[00m Processing Buffer with NAL TYPE=1 0:00:17.720000000"
-# string2 = "0:00:00.175037545 [335m 3454[00m 0x55b7aa9e4120 [37mDEBUG  [00m [00m          rtph264pay gstrtph264pay.c:821:gst_rtp_h264_pay_payload_nal:<rtph264pay0>[00m Processing Buffer with NAL TYPE=7 0:00:00.000000000"
+        
+      if "Preparing to push" in line:
+          
+        seq_search_string_left  = "seq="
+        seq_search_string_right = ", rtptime="
 
-# line_contents = str.split(string)
+        seq_search_string_left_index  = line.find(seq_search_string_left)
+        seq_search_string_right_index = line.find(seq_search_string_right)
 
-# print(int(line_contents[12][-1]))
+        sequence_number = int(line[seq_search_string_left_index+len(seq_search_string_left):seq_search_string_right_index])
 
-# line_contents2 = str.split(string2)
+        packet_count += sequence_number - last_seq
+        last_seq = sequence_number
+    
+    # Account for final frame
+    frame_data.append([timestamp_in_milliseconds, packet_count])
 
-# print(line_contents2[0] + "     " + str(int(line_contents2[11])))
+    packet_sending_times = []
+    packet_count = -1
+    for frame in frame_data:
+      increment = 0.154 #Average time between nal units on UDP
+      for packet in range(frame[1]):
+        packet_count += 1
+        packet_sending_times.append([packet_count, frame[0]+(increment*packet)])
+
+
+    packet_sending_times_np = np.asarray(packet_sending_times)
+    # Count from 0
+    packet_sending_times_np[:,1] = packet_sending_times_np[:,1] - packet_sending_times_np[0,1]
+    print(packet_count)
+
+    return packet_sending_times_np
 
 
