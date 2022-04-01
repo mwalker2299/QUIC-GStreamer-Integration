@@ -14,7 +14,7 @@ The goal of this project is to evaluate the effectiveness of the QUIC protocol w
 
 ## Project Structure
 
-* `timelog.md` The time log for the project.
+* `timelog.md` The time log for the project (Total time logged is 580.75 hours).
 * `data/` Contains data acquired during the project (evaluation).
 * `src/` The source code for the project.
 * `status_report/` Contains the status report to be submitted in December.
@@ -22,3 +22,4 @@ The goal of this project is to evaluate the effectiveness of the QUIC protocol w
 * `requirements/` Holds the requirements for the project
 * `dissertation/` Contains all files needed for the final project dissertation
 * `summer/` Contains info on the research conducted before the project began
+* `submodules/` Contains submodules necessary to build the GStreamer element plugins and run the test framework.

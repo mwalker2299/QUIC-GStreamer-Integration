@@ -473,3 +473,44 @@ No work was done during week 9, 10 and part of 11 as I was focused on coursework
 ### 18th MAR 2022
 
 * *4.00 hours* Completed final checks before launching another test run. the jitterbuffer was struggling with creating timers for a full frames worth of packets in the scenario that all PTS values were the same. I have updated the jitterbuffer such that it will wait atleast 2/3 of a millisecond before starting the next timer.
+
+## 22nd MAR 2022
+
+* *12.00 hours* Reviewed results from final test runs. I noticed unexpected delays on TCP, QUIC_SS, QUIC_GOP and QUIC_FPS. QUIC_GOP, QUIC_FPS, QUIC_SS issues were infrequent and difficult to reproduce but I eventually found that the SFCW limit was being reached repeatedly. The values that I had uncovered previously were no longer appropriate for the new BBB video so I updated these values such that no flow control issues would occur. Additionally, the rtpstreamdepay element was introducing unexplained delays. I modified TCP and QUIC_SS elements such that they would handle the stream payloading (RFC 4571) manually, similar to how QUIC_GOP and QUIC_FPS operate. This removed the delays and after confirming everything was working as expected, I reran the tests for the affected implementations.
+
+## 26th MAR 2022
+
+* *1.50 hours* Fixed bug in stack latency analysis for TCP. The tshark rtp packet subdissector appears to fail even on the server side in the event of loss. Our `extract_rtp_data_from_tcp_stream_available` method used on the client side works without issue, so this is now used instead.
+* *2.00 hours* Fixed two bugs in the stack latency available analysis for QUIC: 
+  - Packets which arrived at the client side twice were causing issues, so I added a list which tracks the offsets of every stream frame recieved. If the stream frame has already been receieved, it is ignored. 
+  - The code was not properly handling the scenario where two consecutive packets were lost, and the second of the two arrived first. The code previosly only attempted to add new stream frames to the end of existing chunks, and did not consider the scenario where a new frame could not be added to the beginning of any existing chunks but could be added to the beginning. Code to handle this case has now been added.
+
+* *4.00 hours* Added code necessary to produce graphs of sending rate and stack latency in terms of availability. 
+
+
+## 27th MAR 2022
+
+* *12.00 hours* Worked on dissertation
+
+## 28th MAR 2022
+
+* *14.00 hours* Worked on dissertation
+
+## 29th MAR 2022
+
+* *14.00 hours* Worked on dissertation
+
+## 30th MAR 2022
+
+* *2.00 hours* Worked on dissertation
+* *1.00 hours* Final meeting with Colin
+* *9.00 hours* Cleaned up code upon learning this was to be submitted as well.
+
+
+## 31st MAR 2022
+
+* *16.00 hours* Worked on dissertation
+
+## 1st MAR 2022 
+
+* *18.00 hours* Finished work on presentation and submitted project
