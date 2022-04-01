@@ -1,0 +1,118 @@
+\begin{thebibliography}{10}
+
+\bibitem{QUICSilver}
+V.~Band.
+\newblock Quicsilver: Optimising quic for use with real-time, 2019-04-22.
+\newblock Last accessed on 2022-03-08.
+
+\bibitem{BBR}
+N.~Cardwell, Y.~Cheng, S.~H. Yeganeh, I.~Swett, and V.~Jacobson.
+\newblock {BBR Congestion Control}.
+\newblock Internet-Draft draft-cardwell-iccrg-bbr-congestion-control-02,
+  Internet Engineering Task Force, Mar. 2022.
+\newblock Work in Progress.
+
+\bibitem{Fukuda}
+K.~Fukuda.
+\newblock An analysis of longitudinal {TCP} passive measurements (short paper).
+\newblock In J.~Domingo{-}Pascual, Y.~Shavitt, and S.~Uhlig, editors, {\em
+  Traffic Monitoring and Analysis - Third International Workshop, {TMA} 2011,
+  Vienna, Austria, April 27, 2011. Proceedings}, volume 6613 of {\em Lecture
+  Notes in Computer Science}, pages 29--36. Springer, 2011.
+
+\bibitem{IP}
+{Internet Protocol}.
+\newblock RFC 791, Sept. 1981.
+
+\bibitem{rfc9002}
+J.~Iyengar and I.~Swett.
+\newblock {QUIC Loss Detection and Congestion Control}.
+\newblock RFC 9002, May 2021.
+
+\bibitem{rfc9000}
+J.~Iyengar and M.~Thomson.
+\newblock {QUIC: A UDP-Based Multiplexed and Secure Transport}.
+\newblock RFC 9000, May 2021.
+
+\bibitem{LIVESURVEY}
+M.~Jackson.
+\newblock Broadcast lag in live online tv sport streaming frustrates fans,
+  2021-06-10.
+\newblock Last accessed on 2022-03-08.
+
+\bibitem{gQUIC}
+A.~Langley, A.~Riddoch, A.~Wilk, A.~Vicente, C.~Krasic, D.~Zhang, F.~Yang,
+  F.~Kouranov, I.~Swett, J.~Iyengar, J.~Bailey, J.~Dorfman, J.~Roskind,
+  J.~Kulik, P.~Westin, R.~Tenneti, R.~Shade, R.~Hamilton, V.~Vasiliev, W.-T.
+  Chang, and Z.~Shi.
+\newblock The quic transport protocol: Design and internet-scale deployment.
+\newblock In {\em Proceedings of the Conference of the ACM Special Interest
+  Group on Data Communication}, SIGCOMM '17, page 183–196, New York, NY, USA,
+  2017. Association for Computing Machinery.
+
+\bibitem{RFC4571}
+J.~Lazzaro.
+\newblock {Framing Real-time Transport Protocol (RTP) and RTP Control Protocol
+  (RTCP) Packets over Connection-Oriented Transport}.
+\newblock RFC 4571, July 2006.
+
+\bibitem{Hollywood}
+S.~McQuistin, C.~Perkins, and M.~Fayed.
+\newblock Tcp hollywood: An unordered, time-lined, tcp for networked multimedia
+  applications.
+\newblock In {\em 2016 IFIP Networking Conference (IFIP Networking) and
+  Workshops}, pages 422--430, 2016.
+
+\bibitem{OFCOM}
+Ofcom, 2019-05-08.
+
+\bibitem{FrameRecovery}
+P.~Orosz, T.~Skopkó, and P.~Varga.
+\newblock Towards estimating video qoe based on frame loss statistics of the
+  video streams.
+\newblock In {\em 2015 IFIP/IEEE International Symposium on Integrated Network
+  Management (IM)}, pages 1282--1285, 2015.
+
+\bibitem{ClipStream}
+M.~Palmer, T.~Kr\"{u}ger, B.~Chandrasekaran, and A.~Feldmann.
+\newblock The quic fix for optimal video streaming.
+\newblock In {\em Proceedings of the Workshop on the Evolution, Performance,
+  and Interoperability of QUIC}, EPIQ'18, page 43–49, New York, NY, USA,
+  2018. Association for Computing Machinery.
+
+\bibitem{UDP}
+J.~Postel.
+\newblock {User Datagram Protocol}.
+\newblock RFC 768, Aug. 1980.
+
+\bibitem{CUBIC}
+I.~Rhee, L.~Xu, S.~Ha, A.~Zimmermann, L.~Eggert, and R.~Scheffenegger.
+\newblock {CUBIC for Fast Long-Distance Networks}.
+\newblock RFC 8312, Feb. 2018.
+
+\bibitem{HOLBlocking}
+M.~Scharf and S.~Kiesel.
+\newblock Nxg03-5: Head-of-line blocking in tcp and sctp: Analysis and
+  measurements.
+\newblock In {\em IEEE Globecom 2006}, pages 1--5, 2006.
+
+\bibitem{RTP}
+H.~Schulzrinne, S.~L. Casner, R.~Frederick, and V.~Jacobson.
+\newblock {RTP: A Transport Protocol for Real-Time Applications}.
+\newblock RFC 3550, July 2003.
+
+\bibitem{RFC8868}
+V.~Singh, J.~Ott, and S.~Holmer.
+\newblock {Evaluating Congestion Control for Interactive Real-Time Media}.
+\newblock RFC 8868, Jan. 2021.
+
+\bibitem{TCP}
+{Transmission Control Protocol}.
+\newblock RFC 793, Sept. 1981.
+
+\bibitem{rfc9001}
+M.~Thomson and S.~Turner.
+\newblock {Using TLS to Secure QUIC}.
+\newblock RFC 9001, May 2021.
+
+\end{thebibliography}
